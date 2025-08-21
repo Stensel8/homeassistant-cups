@@ -12,187 +12,240 @@
         }
         
         body {
-            font-family: var(--ha-card-font-family, 'Roboto', sans-serif);
-            background: var(--ha-card-background, #fafafa);
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1e1e1e;
             margin: 0;
             padding: 16px;
-            color: var(--primary-text-color, #212121);
+            color: #e0e0e0;
+            line-height: 1.5;
         }
         
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: var(--ha-card-background, white);
-            border-radius: var(--ha-card-border-radius, 8px);
-            box-shadow: var(--ha-card-box-shadow, 0 2px 4px rgba(0,0,0,0.1));
+            background: #2d2d2d;
+            border-radius: 4px;
+            border: 1px solid #404040;
             overflow: hidden;
         }
         
         .header {
-            background: var(--primary-color, #03a9f4);
-            color: var(--text-primary-color, white);
+            background: #3f51b5;
+            color: #ffffff;
             padding: 24px;
             text-align: center;
+            border-bottom: 1px solid #404040;
         }
         
         .header h1 {
-            font-size: 2em;
+            font-size: 1.8em;
             margin: 0 0 8px 0;
-            font-weight: var(--paper-font-headline-font-weight, 400);
+            font-weight: 300;
+            letter-spacing: 0.5px;
         }
         
         .header p {
-            font-size: 1em;
-            opacity: 0.9;
+            font-size: 0.9em;
+            opacity: 0.8;
             margin: 0;
+            font-weight: 300;
         }
         
         .content {
-            padding: 30px;
+            padding: 24px;
         }
         
         .section {
             margin-bottom: 24px;
-            background: var(--ha-card-background, #f8f9fa);
-            border-radius: var(--ha-card-border-radius, 8px);
-            padding: 16px;
-            border: 1px solid var(--divider-color, #e0e0e0);
+            background: #333333;
+            border-radius: 4px;
+            padding: 20px;
+            border: 1px solid #404040;
         }
         
         .section h2 {
-            color: var(--primary-text-color, #212121);
+            color: #ffffff;
             margin: 0 0 16px 0;
-            font-size: 1.2em;
-            font-weight: var(--paper-font-title-font-weight, 500);
-            border-bottom: 1px solid var(--divider-color, #e0e0e0);
+            font-size: 1.1em;
+            font-weight: 400;
+            border-bottom: 1px solid #404040;
             padding-bottom: 8px;
         }
         
         .button-group {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
         }
         
         .btn {
-            padding: 15px 25px;
-            border: none;
-            border-radius: 8px;
+            padding: 12px 20px;
+            border: 1px solid transparent;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 1em;
-            font-weight: 600;
-            transition: all 0.3s ease;
+            font-size: 0.9em;
+            font-weight: 400;
+            transition: all 0.2s ease;
             text-decoration: none;
             display: inline-block;
             text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
-        .btn-primary { background: var(--primary-color, #03a9f4); color: var(--text-primary-color, white); }
-        .btn-success { background: var(--success-color, #4caf50); color: white; }
-        .btn-warning { background: var(--warning-color, #ff9800); color: white; }
-        .btn-danger { background: var(--error-color, #f44336); color: white; }
-        .btn-info { background: var(--info-color, #2196f3); color: white; }
+        .btn-primary { 
+            background: #3f51b5; 
+            color: #ffffff; 
+            border-color: #3f51b5; 
+        }
+        .btn-success { 
+            background: #4caf50; 
+            color: #ffffff; 
+            border-color: #4caf50; 
+        }
+        .btn-warning { 
+            background: #ff9800; 
+            color: #ffffff; 
+            border-color: #ff9800; 
+        }
+        .btn-danger { 
+            background: #f44336; 
+            color: #ffffff; 
+            border-color: #f44336; 
+        }
+        .btn-info { 
+            background: #2196f3; 
+            color: #ffffff; 
+            border-color: #2196f3; 
+        }
+        .btn-secondary { 
+            background: #666666; 
+            color: #ffffff; 
+            border-color: #666666; 
+        }
         
         .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            opacity: 0.8;
+            transform: translateY(-1px);
         }
         
         .status {
-            background: #e9ecef;
-            border-radius: 5px;
-            padding: 15px;
-            margin: 10px 0;
-            font-family: monospace;
+            background: #1e1e1e;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            padding: 16px;
+            margin: 12px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            color: #e0e0e0;
         }
         
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
         
         .form-group label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #333;
+            margin-bottom: 6px;
+            font-weight: 400;
+            color: #e0e0e0;
+            font-size: 0.9em;
         }
         
         .form-group input, .form-group select {
             width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            font-size: 1em;
+            padding: 12px;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            font-size: 0.9em;
+            background: #1e1e1e;
+            color: #e0e0e0;
         }
         
         .form-group input:focus, .form-group select:focus {
-            border-color: #4facfe;
+            border-color: #3f51b5;
             outline: none;
+            box-shadow: 0 0 0 2px rgba(63, 81, 181, 0.2);
         }
         
         .alert {
-            padding: 15px;
-            border-radius: 5px;
-            margin: 10px 0;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 12px 0;
             display: none;
+            font-size: 0.9em;
         }
         
         .alert-success {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid #4caf50;
+            color: #4caf50;
         }
         
         .alert-error {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid #f44336;
+            color: #f44336;
         }
         
         .quick-links {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            gap: 16px;
         }
         
         .link-card {
-            background: white;
+            background: #2d2d2d;
             padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            border: 1px solid #404040;
             text-align: center;
-            transition: transform 0.3s ease;
+            transition: all 0.2s ease;
         }
         
         .link-card:hover {
-            transform: translateY(-5px);
+            border-color: #3f51b5;
+            transform: translateY(-2px);
+        }
+        
+        .link-card h3 {
+            color: #ffffff;
+            font-size: 1em;
+            font-weight: 400;
+            margin: 0 0 8px 0;
+        }
+        
+        .link-card p {
+            color: #b0b0b0;
+            font-size: 0.85em;
+            margin: 0 0 16px 0;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🖨️ CUPS Management</h1>
-            <p>Control your print server and manage configurations</p>
+            <h1>CUPS Management</h1>
+            <p>Print server administration interface</p>
         </div>
         
         <div class="content">
             <!-- Service Control Section -->
             <div class="section">
-                <h2>🔧 Service Control</h2>
+                <h2>Service Control</h2>
                 <div class="button-group">
-                    <button class="btn btn-success" onclick="serviceAction('start')">▶️ Start CUPS</button>
-                    <button class="btn btn-warning" onclick="serviceAction('restart')">🔄 Restart CUPS</button>
-                    <button class="btn btn-danger" onclick="serviceAction('stop')">⏹️ Stop CUPS</button>
-                    <button class="btn btn-info" onclick="getStatus()">📊 Get Status</button>
+                    <button class="btn btn-success" onclick="serviceAction('start')">Start CUPS</button>
+                    <button class="btn btn-warning" onclick="serviceAction('restart')">Restart CUPS</button>
+                    <button class="btn btn-danger" onclick="serviceAction('stop')">Stop CUPS</button>
+                    <button class="btn btn-info" onclick="getStatus()">Get Status</button>
                 </div>
                 <div id="serviceStatus" class="status">Click 'Get Status' to see current service status...</div>
             </div>
             
             <!-- Configuration Section -->
             <div class="section">
-                <h2>⚙️ Configuration</h2>
+                <h2>Configuration</h2>
                 <div class="alert alert-success" id="configAlert"></div>
                 <div class="alert alert-error" id="configError"></div>
                 
@@ -229,27 +282,27 @@
                 </div>
                 
                 <div class="button-group">
-                    <button class="btn btn-primary" onclick="loadConfig()">📥 Load Current Config</button>
-                    <button class="btn btn-success" onclick="saveConfig()">💾 Save Configuration</button>
+                    <button class="btn btn-primary" onclick="loadConfig()">Load Current Config</button>
+                    <button class="btn btn-success" onclick="saveConfig()">Save Configuration</button>
                 </div>
             </div>
             
             <!-- Quick Links Section -->
             <div class="section">
-                <h2>🚀 Quick Access</h2>
+                <h2>Quick Access</h2>
                 <div class="quick-links">
                     <div class="link-card">
-                        <h3>🖨️ CUPS Web Interface</h3>
+                        <h3>CUPS Web Interface</h3>
                         <p>Access the full CUPS management interface</p>
                         <a href="/cups/" target="_blank" class="btn btn-primary">Open CUPS</a>
                     </div>
                     <div class="link-card">
-                        <h3>📋 System Logs</h3>
+                        <h3>System Logs</h3>
                         <p>View addon and system logs</p>
                         <button class="btn btn-info" onclick="showLogs()">View Logs</button>
                     </div>
                     <div class="link-card">
-                        <h3>📊 System Info</h3>
+                        <h3>System Info</h3>
                         <p>Display system information</p>
                         <button class="btn btn-info" onclick="showSystemInfo()">System Info</button>
                     </div>
@@ -258,9 +311,9 @@
             
             <!-- Logs Section -->
             <div class="section" id="logsSection" style="display: none;">
-                <h2>📋 System Logs</h2>
+                <h2>System Logs</h2>
                 <div id="logOutput" class="status" style="height: 300px; overflow-y: auto; background: #2d2d2d; color: #fff;"></div>
-                <button class="btn btn-secondary" onclick="refreshLogs()">🔄 Refresh Logs</button>
+                <button class="btn btn-secondary" onclick="refreshLogs()">Refresh Logs</button>
             </div>
         </div>
     </div>
