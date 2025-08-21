@@ -2,3 +2,5 @@
 *.pem
 *.pk
 *.key
+*.crt
+*.cer
