@@ -158,6 +158,7 @@ function Start-Container {
             "run", "-d"
             "--name", $ContainerName
             "-p", "${CupsPort}:631"
+            "-p", "8631:8631"  # HTTP fallback port
             "-p", "${MgmtPort}:8080"
             "-e", "CUPS_USERNAME=$Username"
             "-e", "CUPS_PASSWORD=$Password"
@@ -198,7 +199,8 @@ function Start-Container {
                 if ($healthCheck) {
                     Write-Info "Services are running inside container"
                     Write-Info "✓ You can now access:"
-                    Write-Host "  • CUPS Interface: https://localhost:$CupsPort" -ForegroundColor Cyan
+                    Write-Host "  • CUPS Interface (HTTPS): https://localhost:$CupsPort" -ForegroundColor Cyan
+                    Write-Host "  • CUPS Interface (HTTP): http://localhost:8631" -ForegroundColor Cyan  
                     Write-Host "  • Management Interface: http://localhost:$MgmtPort" -ForegroundColor Cyan
                 } else {
                     Write-Warning "Services may not be fully started yet"

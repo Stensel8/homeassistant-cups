@@ -95,6 +95,7 @@ function start_container() {
     container_id=$(docker run -d \
         --name "$CONTAINER_NAME" \
         -p "${HTTP_PORT}:631" \
+        -p "8631:8631" \
         -e CUPS_USERNAME="$USERNAME" \
         -e CUPS_PASSWORD="$PASSWORD" \
         -e SERVER_NAME="CUPS Print Server" \
@@ -105,7 +106,8 @@ function start_container() {
     if [ -n "$container_id" ]; then
         log_info "Container started successfully"
         log_info "Container ID: $container_id"
-        log_info "CUPS Web Interface: https://localhost:$HTTP_PORT"
+        log_info "CUPS Web Interface (HTTPS): https://localhost:$HTTP_PORT"
+        log_info "CUPS Web Interface (HTTP): http://localhost:8631"  
         log_info "Login with: $USERNAME / $PASSWORD"
         
         # Wait a moment and check if container is still running
