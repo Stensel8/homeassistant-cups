@@ -3,7 +3,7 @@ FROM ${BUILD_FROM}
 
 ARG CUPS_VERSION=2.4.12
 
-LABEL io.hass.version="1.2" io.hass.type="addon" io.hass.arch="aarch64|amd64"
+LABEL io.hass.version="1.2.1" io.hass.type="addon" io.hass.arch="aarch64|amd64"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 

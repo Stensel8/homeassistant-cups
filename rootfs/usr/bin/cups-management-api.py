@@ -1,293 +1,253 @@
 #!/usr/bin/env python3
-"""
-CUPS Management API Server for Home Assistant Add-on
-Provides REST API for managing CUPS service and configuration
-"""
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, render_template_string
 import subprocess
 import json
 import os
 import signal
 import sys
-from datetime import datetime
+import time
 
 app = Flask(__name__)
 
-# Configuration paths
-CONFIG_PATH = '/data/options.json'
-CUPS_CONFIG_PATH = '/config/cups/cupsd.conf'
-LOG_FILE = '/var/log/cups/error_log'
-
 def load_addon_config():
-    """Load Home Assistant addon configuration"""
-    try:
-        if os.path.exists(CONFIG_PATH):
-            with open(CONFIG_PATH, 'r') as f:
-                return json.load(f)
-    except Exception as e:
-        print(f"[ERROR] Failed to load config: {e}")
-    
-    # Return default config
-    return {
-        "cups_username": "print",
-        "cups_password": "print",
-        "cups_port": 631,
-        "management_port": 8080,
-        "server_name": "CUPS Print Server",
-        "log_level": "info",
-        "max_jobs": 100,
-        "ssl_enabled": True
+    """Load addon configuration with defaults"""
+    default_config = {
+        'cups_username': 'print',
+        'cups_password': 'print',
+        'management_port': 8080
     }
-
-def save_addon_config(config):
-    """Save Home Assistant addon configuration"""
+    
     try:
-        os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-        with open(CONFIG_PATH, 'w') as f:
-            json.dump(config, f, indent=2)
-        return True
-    except Exception as e:
-        print(f"[ERROR] Failed to save config: {e}")
-        return False
+        with open('/data/options.json', 'r') as f:
+            config = json.load(f)
+            return {**default_config, **config}
+    except (FileNotFoundError, json.JSONDecodeError):
+        return default_config
 
-def run_command(cmd, shell=True):
-    """Execute shell command and return output"""
+def run_command(cmd, shell=False):
+    """Execute command and return result"""
     try:
-        result = subprocess.run(cmd, shell=shell, capture_output=True, text=True, timeout=30)
-        return result.returncode, result.stdout, result.stderr
+        if shell:
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
+        else:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        return result.returncode == 0, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
-        return -1, "", "Command timed out"
+        return False, "", "Command timeout"
     except Exception as e:
-        return -1, "", str(e)
+        return False, "", str(e)
+
+def get_printers():
+    """Get list of configured printers"""
+    success, output, error = run_command(['lpstat', '-p'])
+    if not success:
+        return []
+    
+    printers = []
+    for line in output.split('\n'):
+        if line.startswith('printer'):
+            parts = line.split()
+            if len(parts) >= 2:
+                printers.append({
+                    'name': parts[1],
+                    'status': 'idle' if 'idle' in line else 'busy'
+                })
+    return printers
+
+def get_jobs():
+    """Get list of print jobs"""
+    success, output, error = run_command(['lpstat', '-o'])
+    if not success:
+        return []
+    
+    jobs = []
+    for line in output.split('\n'):
+        if line.strip():
+            parts = line.split()
+            if len(parts) >= 4:
+                jobs.append({
+                    'id': parts[0].split('-')[-1] if '-' in parts[0] else parts[0],
+                    'printer': parts[0].split('-')[0] if '-' in parts[0] else 'unknown',
+                    'user': parts[1] if len(parts) > 1 else 'unknown',
+                    'size': parts[2] if len(parts) > 2 else '0',
+                    'status': ' '.join(parts[3:]) if len(parts) > 3 else 'unknown'
+                })
+    return jobs
 
 @app.route('/')
 def index():
-    """Serve the main management interface"""
-    return send_from_directory('/var/www/html', 'index.html')
+    """Main management interface"""
+    template = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CUPS Management Interface</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .navbar { background-color: #0056b3; }
+        .card { border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status-indicator { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .status-active { background-color: #28a745; }
+        .status-idle { background-color: #ffc107; }
+        .status-error { background-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark">
+        <div class="container">
+            <span class="navbar-brand">CUPS Management Interface</span>
+            <span class="navbar-text">Print Server Administration</span>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header"><h5>System Status</h5></div>
+                    <div class="card-body">
+                        <div id="system-status">
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="status-indicator status-active"></span>
+                                <span>CUPS Daemon: Active</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span class="status-indicator status-active"></span>
+                                <span>Management API: Active</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header"><h5>Quick Actions</h5></div>
+                    <div class="card-body">
+                        <a href="https://localhost:631" target="_blank" class="btn btn-primary me-2">CUPS Web Interface</a>
+                        <button class="btn btn-secondary" onclick="refreshData()">Refresh Data</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header"><h5>Printers</h5></div>
+                    <div class="card-body">
+                        <div id="printers-list">
+                            <div class="text-muted">Loading printers...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header"><h5>Print Jobs</h5></div>
+                    <div class="card-body">
+                        <div id="jobs-list">
+                            <div class="text-muted">Loading jobs...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function refreshData() {
+            loadPrinters();
+            loadJobs();
+        }
+
+        function loadPrinters() {
+            fetch('/api/printers')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('printers-list');
+                    if (data.printers && data.printers.length > 0) {
+                        container.innerHTML = data.printers.map(printer => 
+                            `<div class="d-flex align-items-center mb-2">
+                                <span class="status-indicator ${printer.status === 'idle' ? 'status-idle' : 'status-active'}"></span>
+                                <span>${printer.name} (${printer.status})</span>
+                            </div>`
+                        ).join('');
+                    } else {
+                        container.innerHTML = '<div class="text-muted">No printers configured</div>';
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('printers-list').innerHTML = '<div class="text-danger">Failed to load printers</div>';
+                });
+        }
+
+        function loadJobs() {
+            fetch('/api/jobs')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('jobs-list');
+                    if (data.jobs && data.jobs.length > 0) {
+                        container.innerHTML = data.jobs.map(job => 
+                            `<div class="mb-2">
+                                <small class="text-muted">Job ${job.id}</small><br>
+                                <strong>${job.printer}</strong> - ${job.user}<br>
+                                <small>${job.status}</small>
+                            </div>`
+                        ).join('');
+                    } else {
+                        container.innerHTML = '<div class="text-muted">No active jobs</div>';
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('jobs-list').innerHTML = '<div class="text-danger">Failed to load jobs</div>';
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', refreshData);
+        setInterval(refreshData, 30000);
+    </script>
+</body>
+</html>'''
+    return render_template_string(template)
 
 @app.route('/api/status')
-def get_status():
-    """Get current CUPS service status"""
-    try:
-        # Check if CUPS is running
-        code, stdout, stderr = run_command("pgrep -x cupsd")
-        if code == 0:
-            cups_status = "✅ RUNNING"
-            pid = stdout.strip()
-        else:
-            cups_status = "❌ STOPPED"
-            pid = "N/A"
-        
-        # Check if avahi is running
-        code, stdout, stderr = run_command("pgrep -x avahi-daemon")
-        avahi_status = "✅ RUNNING" if code == 0 else "❌ STOPPED"
-        
-        # Check if dbus is running
-        code, stdout, stderr = run_command("pgrep -x dbus-daemon")
-        dbus_status = "✅ RUNNING" if code == 0 else "❌ STOPPED"
-        
-        # Get system info
-        code, uptime, _ = run_command("uptime")
-        code, memory, _ = run_command("free -h | grep Mem")
-        
-        status_info = f"""
-🖨️ CUPS Service Status - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-═══════════════════════════════════════════════════════════════
+def api_status():
+    """System status API endpoint"""
+    cups_running = subprocess.run(['pgrep', 'cupsd'], capture_output=True).returncode == 0
+    
+    return jsonify({
+        'status': 'running',
+        'cups_daemon': cups_running,
+        'management_api': True,
+        'timestamp': time.time()
+    })
 
-📋 Service Status:
-   • CUPS Daemon: {cups_status} (PID: {pid})
-   • Avahi mDNS: {avahi_status}
-   • D-Bus: {dbus_status}
+@app.route('/api/printers')
+def api_printers():
+    """Printers API endpoint"""
+    printers = get_printers()
+    return jsonify({'printers': printers})
 
-💾 System Info:
-   • Uptime: {uptime.strip() if uptime else 'Unknown'}
-   • Memory: {memory.strip() if memory else 'Unknown'}
-
-🌐 Network:
-   • CUPS Port: 631
-   • Management Port: 8080
-   • Web Interface: http://localhost:631
-        """
-        
-        return status_info.strip()
-        
-    except Exception as e:
-        return f"❌ Error getting status: {str(e)}"
-
-@app.route('/api/service/<action>', methods=['POST'])
-def service_control(action):
-    """Control CUPS service (start/stop/restart)"""
-    try:
-        if action == 'start':
-            # Start required services
-            run_command("mkdir -p /var/run/dbus")
-            code1, out1, err1 = run_command("dbus-daemon --system --fork")
-            
-            run_command("mkdir -p /var/run/avahi-daemon")
-            code2, out2, err2 = run_command("avahi-daemon --daemonize")
-            
-            code3, out3, err3 = run_command("cupsd")
-            
-            if code3 == 0:
-                return "✅ CUPS service started successfully"
-            else:
-                return f"❌ Failed to start CUPS: {err3}"
-                
-        elif action == 'stop':
-            # Stop services
-            run_command("killall cupsd")
-            run_command("killall avahi-daemon")
-            return "⏹️ CUPS service stopped"
-            
-        elif action == 'restart':
-            # Restart services
-            run_command("killall cupsd")
-            run_command("killall avahi-daemon")
-            
-            # Wait a moment
-            import time
-            time.sleep(2)
-            
-            # Start again
-            run_command("dbus-daemon --system --fork")
-            run_command("avahi-daemon --daemonize")
-            code, out, err = run_command("cupsd")
-            
-            if code == 0:
-                return "🔄 CUPS service restarted successfully"
-            else:
-                return f"❌ Failed to restart CUPS: {err}"
-                
-        else:
-            return f"❌ Unknown action: {action}"
-            
-    except Exception as e:
-        return f"❌ Error executing {action}: {str(e)}"
-
-@app.route('/api/config', methods=['GET', 'POST'])
-def config_management():
-    """Handle configuration get/set"""
-    if request.method == 'GET':
-        # Return current configuration
-        config = load_addon_config()
-        return jsonify(config)
-        
-    elif request.method == 'POST':
-        # Update configuration
-        try:
-            new_config = request.get_json()
-            current_config = load_addon_config()
-            
-            # Update with new values
-            current_config.update(new_config)
-            
-            # Save configuration
-            if save_addon_config(current_config):
-                
-                # If username/password changed, update system user
-                if 'cups_username' in new_config and 'cups_password' in new_config:
-                    username = new_config['cups_username']
-                    password = new_config['cups_password']
-                    
-                    # Create/update user
-                    run_command(f"useradd --groups=sudo,lp,lpadmin --create-home --home-dir=/home/{username} --shell=/bin/bash {username} 2>/dev/null || true")
-                    run_command(f"echo '{username}:{password}' | chpasswd")
-                    
-                return jsonify({"status": "success", "message": "Configuration saved successfully"})
-            else:
-                return jsonify({"status": "error", "message": "Failed to save configuration"}), 500
-                
-        except Exception as e:
-            return jsonify({"status": "error", "message": str(e)}), 500
-
-@app.route('/api/logs')
-def get_logs():
-    """Get CUPS log files"""
-    try:
-        logs = []
-        
-        # CUPS error log
-        if os.path.exists('/var/log/cups/error_log'):
-            code, output, _ = run_command("tail -50 /var/log/cups/error_log")
-            if output:
-                logs.append("=== CUPS Error Log ===")
-                logs.append(output)
-        
-        # CUPS access log
-        if os.path.exists('/var/log/cups/access_log'):
-            code, output, _ = run_command("tail -20 /var/log/cups/access_log")
-            if output:
-                logs.append("\n=== CUPS Access Log ===")
-                logs.append(output)
-        
-        # System logs
-        code, output, _ = run_command("journalctl -u cups -n 20 --no-pager")
-        if output:
-            logs.append("\n=== System Log ===")
-            logs.append(output)
-        
-        return '\n'.join(logs) if logs else "No logs available"
-        
-    except Exception as e:
-        return f"Error reading logs: {str(e)}"
-
-@app.route('/api/system-info')
-def get_system_info():
-    """Get system information"""
-    try:
-        info = []
-        
-        # System info
-        code, output, _ = run_command("uname -a")
-        if output:
-            info.append(f"System: {output.strip()}")
-        
-        # CUPS version
-        code, output, _ = run_command("cupsd -v")
-        if output:
-            info.append(f"CUPS Version: {output.strip()}")
-        
-        # Disk usage
-        code, output, _ = run_command("df -h /")
-        if output:
-            info.append(f"Disk Usage:\n{output}")
-        
-        # Network interfaces
-        code, output, _ = run_command("ip addr show")
-        if output:
-            info.append(f"Network Interfaces:\n{output}")
-        
-        return '\n\n'.join(info)
-        
-    except Exception as e:
-        return f"Error getting system info: {str(e)}"
-
-@app.route('/cups/')
-def cups_proxy():
-    """Proxy to CUPS web interface"""
-    return """
-    <script>
-        // Redirect to CUPS interface
-        window.open('http://localhost:631', '_blank');
-        window.history.back();
-    </script>
-    <p>Opening CUPS web interface... <a href="http://localhost:631" target="_blank">Click here if it doesn't open automatically</a></p>
-    """
+@app.route('/api/jobs')
+def api_jobs():
+    """Jobs API endpoint"""
+    jobs = get_jobs()
+    return jsonify({'jobs': jobs})
 
 def signal_handler(sig, frame):
-    """Handle shutdown signals"""
-    print('[INFO] Management API shutting down...')
+    print('[INFO] Shutting down Management API')
     sys.exit(0)
 
 if __name__ == '__main__':
-    # Setup signal handlers
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
-    # Get port from config
     config = load_addon_config()
     port = config.get('management_port', 8080)
     
-    logger.info(f"Starting CUPS Management API on port {port}")
+    print(f'[INFO] Starting CUPS Management API on port {port}')
     app.run(host='0.0.0.0', port=port, debug=False)

@@ -11,14 +11,22 @@ if command -v bashio >/dev/null 2>&1; then
 else
     CUPS_USERNAME="${CUPS_USERNAME:-print}"
     CUPS_PASSWORD="${CUPS_PASSWORD:-print}"
-    echo "[INFO] Using default configuration"
+    echo "[INFO] Using environment variables"
 fi
 
 # Ensure required directories exist
-mkdir -p /var/run/dbus /var/run/avahi-daemon /var/log/supervisor
+mkdir -p /var/run/dbus /var/run/avahi-daemon /var/log/supervisor /var/log/cups
 
-# Use addon_config directly (mounted by Home Assistant)
-ln -sf /addon_config/cups /etc/cups
+# Setup CUPS configuration
+if [ -d /config/cups ]; then
+    echo "[INFO] Using persistent CUPS configuration"
+    cp -f /config/cups/* /etc/cups/ 2>/dev/null || true
+elif [ -d /addon_config/cups ]; then
+    echo "[INFO] Using addon_config CUPS configuration"
+    cp -f /addon_config/cups/* /etc/cups/ 2>/dev/null || true
+else
+    echo "[WARNING] No persistent CUPS config found, using defaults"
+fi
 
 # Setup user
 echo "[INFO] Setting up user: $CUPS_USERNAME"
@@ -27,26 +35,77 @@ if ! id "$CUPS_USERNAME" >/dev/null 2>&1; then
 fi
 echo "$CUPS_USERNAME:$CUPS_PASSWORD" | chpasswd
 
-# Start base services
+# Generate SSL certificates if not present
+if [ ! -f /etc/cups/ssl/server.crt ] || [ ! -f /etc/cups/ssl/server.key ]; then
+    echo "[INFO] Generating SSL certificates..."
+    /generate-ssl.sh
+fi
+
+# Start base services with proper error checking
 echo "[INFO] Starting dbus..."
 mkdir -p /var/run/dbus
-dbus-daemon --system --fork
+if ! dbus-daemon --system --fork; then
+    echo "[ERROR] Failed to start dbus"
+    exit 1
+fi
 
 echo "[INFO] Starting avahi..."
 mkdir -p /var/run/avahi-daemon
-avahi-daemon --daemonize
+if ! avahi-daemon --daemonize; then
+    echo "[ERROR] Failed to start avahi"
+    exit 1
+fi
 
-# Wait for avahi socket
-while [ ! -e /var/run/avahi-daemon/socket ]; do
+# Wait for avahi socket with timeout
+echo "[INFO] Waiting for avahi socket..."
+timeout=30
+while [ ! -e /var/run/avahi-daemon/socket ] && [ $timeout -gt 0 ]; do
     sleep 1
+    timeout=$((timeout-1))
 done
 
 echo "[INFO] Starting CUPS daemon..."
-cupsd
+if ! cupsd; then
+    echo "[ERROR] Failed to start CUPS daemon"
+    exit 1
+fi
 
-# Make sure the management API script is executable
-chmod +x /usr/bin/cups-management-api.py
+# Wait for CUPS to be ready
+echo "[INFO] Waiting for CUPS to be ready..."
+timeout=30
+while [ $timeout -gt 0 ]; do
+    if curl -k -s --max-time 3 https://localhost:631/ >/dev/null 2>&1; then
+        echo "[INFO] CUPS is ready"
+        break
+    fi
+    sleep 2
+    timeout=$((timeout-2))
+done
 
-# Start supervisor which will manage remaining services
-echo "[INFO] Starting additional services via supervisor..."
-exec /usr/bin/supervisord -c /etc/supervisor/conf.d/services.conf
+# Start management API
+echo "[INFO] Starting management API..."
+python3 /usr/bin/cups-management-api.py &
+API_PID=$!
+
+# Wait for API to be ready
+timeout=20
+while [ $timeout -gt 0 ]; do
+    if curl -s --max-time 3 http://localhost:8080/ >/dev/null 2>&1; then
+        echo "[INFO] Management API is ready"
+        break
+    fi
+    sleep 2
+    timeout=$((timeout-2))
+done
+
+# Start supervisor for HA integration (only if bashio available)
+if command -v bashio >/dev/null 2>&1; then
+    echo "[INFO] Starting Home Assistant integration services..."
+    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/services.conf
+else
+    echo "[INFO] Running in standalone mode"
+    echo "[INFO] CUPS Interface: https://localhost:631"
+    echo "[INFO] Management Interface: http://localhost:8080"
+    # Keep the container running
+    wait $API_PID
+fi

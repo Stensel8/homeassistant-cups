@@ -1,112 +1,14 @@
-#!/usr/bin/with-contenv bashio
-# ==============================================================================
-# CUPS Add-on Service Integration
-# Registers CUPS services with Home Assistant
-# ==============================================================================
+#!/bin/bash
+# CUPS Home Assistant Integration Service
 
-declare cups_username
-declare cups_password
-declare cups_port
-declare server_name
-declare log_level
+echo "[INFO] CUPS HA Integration service starting..."
 
-# Read configuration
-cups_username=$(bashio::config 'cups_username')
-cups_password=$(bashio::config 'cups_password') 
-cups_port=$(bashio::config 'cups_port')
-server_name=$(bashio::config 'server_name')
-log_level=$(bashio::config 'log_level')
-
-bashio::log.info "Registering CUPS services with Home Assistant..."
-
-# Register addon services with Home Assistant
-bashio::services.publish "cups" "restart_service" '{
-  "description": "Restart the CUPS print service",
-  "fields": {}
-}'
-
-bashio::services.publish "cups" "stop_service" '{
-  "description": "Stop the CUPS print service", 
-  "fields": {}
-}'
-
-bashio::services.publish "cups" "start_service" '{
-  "description": "Start the CUPS print service",
-  "fields": {}
-}'
-
-bashio::services.publish "cups" "get_status" '{
-  "description": "Get CUPS service status",
-  "fields": {}
-}'
-
-bashio::services.publish "cups" "update_config" '{
-  "description": "Update CUPS configuration",
-  "fields": {
-    "username": {
-      "description": "CUPS admin username",
-      "example": "admin"
-    },
-    "password": {
-      "description": "CUPS admin password", 
-      "example": "password"
-    },
-    "port": {
-      "description": "CUPS service port",
-      "example": 631
-    }
-  }
-}'
-
-bashio::log.info "CUPS services registered successfully!"
-
-# Create persistent service listener
+# Simple stub - this would normally integrate with Home Assistant
+# For now, just run a minimal service that stays alive
 while true; do
-    if bashio::services.has_calls; then
-        call_json=$(bashio::services.take)
-        service=$(echo "$call_json" | jq -r '.service // empty')
-        data=$(echo "$call_json" | jq -r '.data // {}')
-        
-        bashio::log.info "Received service call: $service"
-        
-        case "$service" in
-            "cups.restart_service")
-                bashio::log.info "Restarting CUPS service..."
-                curl -X POST http://localhost:8080/api/service/restart
-                ;;
-            "cups.stop_service")
-                bashio::log.info "Stopping CUPS service..."
-                curl -X POST http://localhost:8080/api/service/stop
-                ;;
-            "cups.start_service")
-                bashio::log.info "Starting CUPS service..."
-                curl -X POST http://localhost:8080/api/service/start
-                ;;
-            "cups.get_status")
-                bashio::log.info "Getting CUPS status..."
-                status=$(curl -s http://localhost:8080/api/status)
-                bashio::log.info "$status"
-                ;;
-            "cups.update_config")
-                bashio::log.info "Updating CUPS configuration..."
-                username=$(echo "$data" | jq -r '.username // empty')
-                password=$(echo "$data" | jq -r '.password // empty')
-                port=$(echo "$data" | jq -r '.port // empty')
-                
-                config_json="{}"
-                if [[ -n "$username" ]]; then
-                    config_json=$(echo "$config_json" | jq --arg u "$username" '.cups_username = $u')
-                fi
-                if [[ -n "$password" ]]; then
-                    config_json=$(echo "$config_json" | jq --arg p "$password" '.cups_password = $p')
-                fi
-                if [[ -n "$port" ]]; then
-                    config_json=$(echo "$config_json" | jq --arg port "$port" '.cups_port = ($port | tonumber)')
-                fi
-                
-                curl -X POST -H "Content-Type: application/json" -d "$config_json" http://localhost:8080/api/config
-                ;;
-        esac
+    sleep 30
+    # Check if management API is running
+    if ! curl -s http://localhost:8080/api/status >/dev/null 2>&1; then
+        echo "[WARNING] Management API not responding"
     fi
-    sleep 1
 done

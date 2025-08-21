@@ -197,9 +197,9 @@ function Start-Container {
                 $healthCheck = docker exec $ContainerName ps aux | Select-String "cupsd|supervisord"
                 if ($healthCheck) {
                     Write-Info "Services are running inside container"
-                    Write-Info "✓ You can now access:"
-                    Write-Host "  • CUPS Interface: https://localhost:$CupsPort" -ForegroundColor Cyan
-                    Write-Host "  • Management Interface: http://localhost:$MgmtPort" -ForegroundColor Cyan
+                    Write-Info "You can now access:"
+                    Write-Host "  - CUPS Interface: https://localhost:$CupsPort" -ForegroundColor Cyan
+                    Write-Host "  - Management Interface: http://localhost:$MgmtPort" -ForegroundColor Cyan
                 } else {
                     Write-Warning "Services may not be fully started yet"
                 }
@@ -317,25 +317,25 @@ function Show-Status {
             # Check CUPS
             $cupsProcess = $processes | Select-String "cupsd"
             if ($cupsProcess) {
-                Write-Host "✓ CUPS daemon is running" -ForegroundColor Green
+                Write-Host "CUPS daemon is running" -ForegroundColor Green
             } else {
-                Write-Host "✗ CUPS daemon is not running" -ForegroundColor Red
+                Write-Host "CUPS daemon is not running" -ForegroundColor Red
             }
             
             # Check Management API
             $apiProcess = $processes | Select-String "cups-management-api"
             if ($apiProcess) {
-                Write-Host "✓ Management API is running" -ForegroundColor Green
+                Write-Host "Management API is running" -ForegroundColor Green
             } else {
-                Write-Host "✗ Management API is not running" -ForegroundColor Red
+                Write-Host "Management API is not running" -ForegroundColor Red
             }
             
             # Check Supervisor
             $supervisorProcess = $processes | Select-String "supervisord"
             if ($supervisorProcess) {
-                Write-Host "✓ Supervisor is running" -ForegroundColor Green
+                Write-Host "Supervisor is running" -ForegroundColor Green
             } else {
-                Write-Host "✗ Supervisor is not running" -ForegroundColor Red
+                Write-Host "Supervisor is not running" -ForegroundColor Red
             }
             
             # Test web interfaces
@@ -343,27 +343,27 @@ function Show-Status {
             try {
                 $cupsResponse = docker exec $ContainerName curl -s -k -o /dev/null -w "%{http_code}" https://localhost:631
                 if ($cupsResponse -eq "200" -or $cupsResponse -eq "401") {
-                    Write-Host "✓ CUPS web interface is responding (HTTP $cupsResponse)" -ForegroundColor Green
+                    Write-Host "CUPS web interface is responding (HTTP $cupsResponse)" -ForegroundColor Green
                 } else {
-                    Write-Host "⚠ CUPS web interface returned status: $cupsResponse" -ForegroundColor Yellow
+                    Write-Host "Warning: CUPS web interface returned status: $cupsResponse" -ForegroundColor Yellow
                 }
             } catch {
-                Write-Host "⚠ Could not test CUPS web interface" -ForegroundColor Yellow
+                Write-Host "Warning: Could not test CUPS web interface" -ForegroundColor Yellow
             }
             
             try {
                 $mgmtResponse = docker exec $ContainerName curl -s -o /dev/null -w "%{http_code}" http://localhost:8080
                 if ($mgmtResponse -eq "200") {
-                    Write-Host "✓ Management interface is responding (HTTP $mgmtResponse)" -ForegroundColor Green
+                    Write-Host "Management interface is responding (HTTP $mgmtResponse)" -ForegroundColor Green
                 } else {
-                    Write-Host "⚠ Management interface returned status: $mgmtResponse" -ForegroundColor Yellow
+                    Write-Host "Warning: Management interface returned status: $mgmtResponse" -ForegroundColor Yellow
                 }
             } catch {
-                Write-Host "⚠ Could not test Management interface" -ForegroundColor Yellow
+                Write-Host "Warning: Could not test Management interface" -ForegroundColor Yellow
             }
             
         } catch {
-            Write-Host "⚠ Could not check service status" -ForegroundColor Yellow
+            Write-Host "Warning: Could not check service status" -ForegroundColor Yellow
         }
         
         Write-Info "`nAccess Information:"
