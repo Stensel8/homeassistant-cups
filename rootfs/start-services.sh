@@ -58,7 +58,7 @@ fi
 
 # Wait for avahi socket with timeout
 echo "[INFO] Waiting for avahi socket..."
-timeout="$AVAHI_SOCKET_TIMEOUT"
+timeout="${AVAHI_SOCKET_TIMEOUT:-10}"
 while [ ! -e /var/run/avahi-daemon/socket ] && [ $timeout -gt 0 ]; do
     sleep 1
     timeout=$((timeout-1))
