@@ -72,7 +72,7 @@ fi
 
 # Wait for CUPS to be ready
 echo "[INFO] Waiting for CUPS to be ready..."
-timeout=30
+timeout=$CUPS_TIMEOUT
 while [ $timeout -gt 0 ]; do
     # Use a custom CA certificate if provided, otherwise default to system CAs
     if [ -n "$CUPS_CA_CERT" ] && [ -f "$CUPS_CA_CERT" ]; then
