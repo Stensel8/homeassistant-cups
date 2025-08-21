@@ -289,5 +289,5 @@ if __name__ == '__main__':
     config = load_addon_config()
     port = config.get('management_port', 8080)
     
-    logger.info(f"Starting CUPS Management API on port {port}")
+    print(f"[INFO] Starting CUPS Management API on port {port}")
     app.run(host='0.0.0.0', port=port, debug=False)

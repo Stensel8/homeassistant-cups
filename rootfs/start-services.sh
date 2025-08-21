@@ -41,8 +41,29 @@ while [ ! -e /var/run/avahi-daemon/socket ]; do
     sleep 1
 done
 
+# Generate SSL certificates if they don't exist
+if [ ! -f "/etc/cups/ssl/server.crt" ] || [ ! -f "/etc/cups/ssl/server.key" ]; then
+    echo "[INFO] Generating SSL certificates..."
+    /generate-ssl.sh
+fi
+
 echo "[INFO] Starting CUPS daemon..."
 cupsd
+
+# Wait for CUPS to be ready and test connectivity
+echo "[INFO] Waiting for CUPS to initialize..."
+sleep 3
+
+# Test if CUPS is responding
+for i in {1..10}; do
+    if curl -k -s --max-time 5 https://localhost:631/ >/dev/null 2>&1; then
+        echo "[INFO] CUPS is responding on HTTPS port"
+        break
+    else
+        echo "[INFO] Waiting for CUPS to be ready... (attempt $i/10)"
+        sleep 2
+    fi
+done
 
 # Make sure the management API script is executable
 chmod +x /usr/bin/cups-management-api.py
