@@ -1,0 +1,14 @@
+#!/bin/bash
+# CUPS Home Assistant Integration Service
+
+echo "[INFO] CUPS HA Integration service starting..."
+
+# Simple stub - this would normally integrate with Home Assistant
+# For now, just run a minimal service that stays alive
+while true; do
+    sleep 30
+    # Check if management API is running
+    if ! curl -s http://localhost:8080/api/status >/dev/null 2>&1; then
+        echo "[WARNING] Management API not responding"
+    fi
+done

@@ -1,0 +1,62 @@
+-----BEGIN CERTIFICATE-----
+MIID9DCCAtygAwIBAgIEaKY8HzANBgkqhkiG9w0BAQsFADBzMQswCQYDVQQGEwJV
+UzEWMBQGA1UEAxMNbG9jYWxob3N0OjYzMTEWMBQGA1UEChMNbG9jYWxob3N0OjYz
+MTEQMA4GA1UECxMHVW5rbm93bjEQMA4GA1UECBMHVW5rbm93bjEQMA4GA1UEBxMH
+VW5rbm93bjAeFw0yNTA4MjAyMTIwMzFaFw0zNTA4MTgyMTIwMzFaMHMxCzAJBgNV
+BAYTAlVTMRYwFAYDVQQDEw1sb2NhbGhvc3Q6NjMxMRYwFAYDVQQKEw1sb2NhbGhv
+c3Q6NjMxMRAwDgYDVQQLEwdVbmtub3duMRAwDgYDVQQIEwdVbmtub3duMRAwDgYD
+VQQHEwdVbmtub3duMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtfQc
+NgMc0VkdhKGv3HKkM9XNIsE9MkMdUpxdcje8WMHyUp1tXPgre+tobsd2YAVVwYin
+LnoD0EzcKlz3YXm6eH3YE03qWdFI41MH318VEyWB1BR9GaqHePdSY8ipZ1MTpp6r
+zYRNfZAQkSHvMGFrxZioQi+YVwpeKLny8K2lzOaO8iJTRrSm8WCsZP4J01gU9i/j
+VIdJpY9LMKLCDiFNQJeIk4Hm6Fyzc7jmN7P0cM3GjXogS5TWOTgciCQFBFNiesR+
+UdDkL6KZGc7uPh1TxFrx9P1I1B+ga7CpwI+woXYMjfj4Are7FQGU1Kbj8Yas5MTn
+efz64HcIt/t6t1aVXQIDAQABo4GPMIGMMAwGA1UdEwEB/wQCMAAwOAYDVR0RBDEw
+L4INbG9jYWxob3N0OjYzMYITbG9jYWxob3N0OjYzMS5sb2NhbIIJbG9jYWxob3N0
+MBMGA1UdJQQMMAoGCCsGAQUFBwMBMA4GA1UdDwEB/wQEAwIFoDAdBgNVHQ4EFgQU
+g23dE4+7wbOttWL9D1Fk/JI57RwwDQYJKoZIhvcNAQELBQADggEBAKpvm1OCMaeO
+KzeuNvRiV+l4gLkSlWCQcoCxZ9/TFYHJqjQn/Ddhi7d++LBYXZc9kCr25zHh6cgT
+Z3gBOo09uMaRtIMeLu+BQtPvhdK8WCBYf7Gbl/blrD+Wi0cEXZX6D4+PnPOyS/TL
+AR7eFON19tb+5lsovsBTEUZTgqKdARkSizz2bduP8JQPlV2OFRbhYKYEbyjuwxxk
+mCMIeo+L6hKUWVGVyTnSqN+Yt4+OBK/M+Y7IwJJLuJDLbBUh34QevzrCZH96pGIs
+2W2QaDqTar6MMjcn9N14l1klaqE2ytFAc47SGSWZMTct0eMZ6Q4AznbnpMT3jEZG
+YXjdkE7siyg=
+# SSL certificate not checked into source control.
+# 
+# Please generate a self-signed certificate for local development using:
+#   openssl req -x509 -newkey rsa:4096 -keyout localhost_631.key -out localhost_631.crt -days 365 -nodes -subj "/CN=localhost"
+#
+# Place the generated certificate at this path.
+#
+# SSL certificate not checked into source control.
+#
+# This file is a placeholder. No real certificate is stored here.
+#
+# Please generate a self-signed certificate for local development using:
+#   openssl req -x509 -newkey rsa:4096 -keyout localhost_631.key -out localhost_631.crt -days 365 -nodes -subj "/CN=localhost"
+#
+# Place the generated certificate at this path.
+#
+# For production, use certificates managed by your organization's secure configuration management process.
+#
+# Example placeholder (not a valid certificate):
+-----BEGIN CERTIFICATE-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+-----END CERTIFICATE-----

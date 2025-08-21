@@ -1,0 +1,11 @@
+#!/bin/bash
+# CUPS Discovery Service (simplified)
+
+echo "[INFO] CUPS Discovery service starting..."
+
+# Simple stub for discovery service
+# This would normally register with Home Assistant's MQTT discovery
+while true; do
+    sleep 60
+    echo "[INFO] Discovery service heartbeat"
+done
