@@ -94,7 +94,7 @@ echo "[INFO] Starting management API..."
 python3 /usr/bin/cups-management-api.py &
 API_PID=$!
 
-# Wait for API to be ready
+# Wait for the API to be ready
 timeout=20
 while [ $timeout -gt 0 ]; do
     if curl -s --max-time 3 http://localhost:8080/ >/dev/null 2>&1; then
