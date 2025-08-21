@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CUPS Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--ha-card-font-family, 'Roboto', sans-serif);
+            background: var(--ha-card-background, #fafafa);
+            margin: 0;
+            padding: 16px;
+            color: var(--primary-text-color, #212121);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--ha-card-background, white);
+            border-radius: var(--ha-card-border-radius, 8px);
+            box-shadow: var(--ha-card-box-shadow, 0 2px 4px rgba(0,0,0,0.1));
+            overflow: hidden;
+        }
+        
+        .header {
+            background: var(--primary-color, #03a9f4);
+            color: var(--text-primary-color, white);
+            padding: 24px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            margin: 0 0 8px 0;
+            font-weight: var(--paper-font-headline-font-weight, 400);
+        }
+        
+        .header p {
+            font-size: 1em;
+            opacity: 0.9;
+            margin: 0;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 24px;
+            background: var(--ha-card-background, #f8f9fa);
+            border-radius: var(--ha-card-border-radius, 8px);
+            padding: 16px;
+            border: 1px solid var(--divider-color, #e0e0e0);
+        }
+        
+        .section h2 {
+            color: var(--primary-text-color, #212121);
+            margin: 0 0 16px 0;
+            font-size: 1.2em;
+            font-weight: var(--paper-font-title-font-weight, 500);
+            border-bottom: 1px solid var(--divider-color, #e0e0e0);
+            padding-bottom: 8px;
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        
+        .btn-primary { background: var(--primary-color, #03a9f4); color: var(--text-primary-color, white); }
+        .btn-success { background: var(--success-color, #4caf50); color: white; }
+        .btn-warning { background: var(--warning-color, #ff9800); color: white; }
+        .btn-danger { background: var(--error-color, #f44336); color: white; }
+        .btn-info { background: var(--info-color, #2196f3); color: white; }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .status {
+            background: #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            border-color: #4facfe;
+            outline: none;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .link-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .link-card:hover {
+            transform: translateY(-5px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🖨️ CUPS Management</h1>
+            <p>Control your print server and manage configurations</p>
+        </div>
+        
+        <div class="content">
+            <!-- Service Control Section -->
+            <div class="section">
+                <h2>🔧 Service Control</h2>
+                <div class="button-group">
+                    <button class="btn btn-success" onclick="serviceAction('start')">▶️ Start CUPS</button>
+                    <button class="btn btn-warning" onclick="serviceAction('restart')">🔄 Restart CUPS</button>
+                    <button class="btn btn-danger" onclick="serviceAction('stop')">⏹️ Stop CUPS</button>
+                    <button class="btn btn-info" onclick="getStatus()">📊 Get Status</button>
+                </div>
+                <div id="serviceStatus" class="status">Click 'Get Status' to see current service status...</div>
+            </div>
+            
+            <!-- Configuration Section -->
+            <div class="section">
+                <h2>⚙️ Configuration</h2>
+                <div class="alert alert-success" id="configAlert"></div>
+                <div class="alert alert-error" id="configError"></div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div class="form-group">
+                        <label>Username:</label>
+                        <input type="text" id="username" placeholder="admin">
+                    </div>
+                    <div class="form-group">
+                        <label>Password:</label>
+                        <input type="password" id="password" placeholder="••••••••">
+                    </div>
+                    <div class="form-group">
+                        <label>CUPS Port:</label>
+                        <input type="number" id="cupsPort" value="631" min="1024" max="65535">
+                    </div>
+                    <div class="form-group">
+                        <label>Management Port:</label>
+                        <input type="number" id="mgmtPort" value="8080" min="1024" max="65535">
+                    </div>
+                    <div class="form-group">
+                        <label>Server Name:</label>
+                        <input type="text" id="serverName" placeholder="My Print Server">
+                    </div>
+                    <div class="form-group">
+                        <label>Log Level:</label>
+                        <select id="logLevel">
+                            <option value="debug">Debug</option>
+                            <option value="info" selected>Info</option>
+                            <option value="warning">Warning</option>
+                            <option value="error">Error</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="loadConfig()">📥 Load Current Config</button>
+                    <button class="btn btn-success" onclick="saveConfig()">💾 Save Configuration</button>
+                </div>
+            </div>
+            
+            <!-- Quick Links Section -->
+            <div class="section">
+                <h2>🚀 Quick Access</h2>
+                <div class="quick-links">
+                    <div class="link-card">
+                        <h3>🖨️ CUPS Web Interface</h3>
+                        <p>Access the full CUPS management interface</p>
+                        <a href="/cups/" target="_blank" class="btn btn-primary">Open CUPS</a>
+                    </div>
+                    <div class="link-card">
+                        <h3>📋 System Logs</h3>
+                        <p>View addon and system logs</p>
+                        <button class="btn btn-info" onclick="showLogs()">View Logs</button>
+                    </div>
+                    <div class="link-card">
+                        <h3>📊 System Info</h3>
+                        <p>Display system information</p>
+                        <button class="btn btn-info" onclick="showSystemInfo()">System Info</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Logs Section -->
+            <div class="section" id="logsSection" style="display: none;">
+                <h2>📋 System Logs</h2>
+                <div id="logOutput" class="status" style="height: 300px; overflow-y: auto; background: #2d2d2d; color: #fff;"></div>
+                <button class="btn btn-secondary" onclick="refreshLogs()">🔄 Refresh Logs</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Service control functions
+        async function serviceAction(action) {
+            const statusDiv = document.getElementById('serviceStatus');
+            statusDiv.innerHTML = `Executing ${action}...`;
+            
+            try {
+                const response = await fetch(`/api/service/${action}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.text();
+                statusDiv.innerHTML = `${action.toUpperCase()}: ${result}`;
+                
+                // Auto-refresh status after action
+                setTimeout(getStatus, 2000);
+            } catch (error) {
+                statusDiv.innerHTML = `Error: ${error.message}`;
+            }
+        }
+        
+        async function getStatus() {
+            const statusDiv = document.getElementById('serviceStatus');
+            statusDiv.innerHTML = 'Getting status...';
+            
+            try {
+                const response = await fetch('/api/status');
+                const result = await response.text();
+                statusDiv.innerHTML = result;
+            } catch (error) {
+                statusDiv.innerHTML = `Error: ${error.message}`;
+            }
+        }
+        
+        // Configuration functions
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                
+                document.getElementById('username').value = config.cups_username || '';
+                document.getElementById('password').value = '';
+                document.getElementById('cupsPort').value = config.cups_port || 631;
+                document.getElementById('mgmtPort').value = config.management_port || 8080;
+                document.getElementById('serverName').value = config.server_name || '';
+                document.getElementById('logLevel').value = config.log_level || 'info';
+                
+                showAlert('configAlert', 'Configuration loaded successfully!');
+            } catch (error) {
+                showAlert('configError', 'Failed to load configuration: ' + error.message);
+            }
+        }
+        
+        async function saveConfig() {
+            const config = {
+                cups_username: document.getElementById('username').value,
+                cups_password: document.getElementById('password').value,
+                cups_port: parseInt(document.getElementById('cupsPort').value),
+                management_port: parseInt(document.getElementById('mgmtPort').value),
+                server_name: document.getElementById('serverName').value,
+                log_level: document.getElementById('logLevel').value
+            };
+            
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                if (response.ok) {
+                    showAlert('configAlert', 'Configuration saved successfully! Restart service to apply changes.');
+                } else {
+                    throw new Error('Failed to save configuration');
+                }
+            } catch (error) {
+                showAlert('configError', 'Failed to save configuration: ' + error.message);
+            }
+        }
+        
+        // Utility functions
+        function showAlert(elementId, message) {
+            const alert = document.getElementById(elementId);
+            alert.textContent = message;
+            alert.style.display = 'block';
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+        
+        async function showLogs() {
+            const logsSection = document.getElementById('logsSection');
+            logsSection.style.display = 'block';
+            logsSection.scrollIntoView({ behavior: 'smooth' });
+            refreshLogs();
+        }
+        
+        async function refreshLogs() {
+            const logOutput = document.getElementById('logOutput');
+            logOutput.innerHTML = 'Loading logs...';
+            
+            try {
+                const response = await fetch('/api/logs');
+                const logs = await response.text();
+                logOutput.innerHTML = logs.replace(/\n/g, '<br>');
+                logOutput.scrollTop = logOutput.scrollHeight;
+            } catch (error) {
+                logOutput.innerHTML = `Error loading logs: ${error.message}`;
+            }
+        }
+        
+        async function showSystemInfo() {
+            try {
+                const response = await fetch('/api/system-info');
+                const info = await response.text();
+                alert(info);
+            } catch (error) {
+                alert('Error getting system info: ' + error.message);
+            }
+        }
+        
+        // Load configuration on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfig();
+            getStatus();
+        });
+    </script>
+</body>
+</html>
