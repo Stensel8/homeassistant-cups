@@ -28,4 +28,35 @@ YXjdkE7siyg=
 #
 # Place the generated certificate at this path.
 #
+# SSL certificate not checked into source control.
+#
+# This file is a placeholder. No real certificate is stored here.
+#
+# Please generate a self-signed certificate for local development using:
+#   openssl req -x509 -newkey rsa:4096 -keyout localhost_631.key -out localhost_631.crt -days 365 -nodes -subj "/CN=localhost"
+#
+# Place the generated certificate at this path.
+#
 # For production, use certificates managed by your organization's secure configuration management process.
+#
+# Example placeholder (not a valid certificate):
+-----BEGIN CERTIFICATE-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull
+-----END CERTIFICATE-----
