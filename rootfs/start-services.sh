@@ -58,7 +58,7 @@ fi
 
 # Wait for avahi socket with timeout
 echo "[INFO] Waiting for avahi socket..."
-timeout=30
+timeout="$AVAHI_SOCKET_TIMEOUT"
 while [ ! -e /var/run/avahi-daemon/socket ] && [ $timeout -gt 0 ]; do
     sleep 1
     timeout=$((timeout-1))
@@ -72,9 +72,15 @@ fi
 
 # Wait for CUPS to be ready
 echo "[INFO] Waiting for CUPS to be ready..."
-timeout=30
+timeout=$CUPS_TIMEOUT
 while [ $timeout -gt 0 ]; do
-    if curl -k -s --max-time 3 https://localhost:631/ >/dev/null 2>&1; then
+    # Use a custom CA certificate if provided, otherwise default to system CAs
+    if [ -n "$CUPS_CA_CERT" ] && [ -f "$CUPS_CA_CERT" ]; then
+        CURL_CA_OPT="--cacert $CUPS_CA_CERT"
+    else
+        CURL_CA_OPT=""
+    fi
+    if curl $CURL_CA_OPT -s --max-time 3 https://localhost:631/ >/dev/null 2>&1; then
         echo "[INFO] CUPS is ready"
         break
     fi
