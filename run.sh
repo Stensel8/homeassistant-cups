@@ -32,13 +32,13 @@ function show_usage() {
     echo ""
     echo "Environment variables:"
     echo "  CONTAINER_NAME - Container name (default: homeassistant-cups)"
-    echo "  IMAGE_NAME     - Docker image name (default: homeassistant-cups:latest)"
+    echo "  IMAGE_NAME     - Podman image name (default: homeassistant-cups:latest)"
     echo "  HTTP_PORT      - HTTP port mapping (default: 631)"
     echo "  USERNAME       - CUPS username (default: admin)"
     echo "  PASSWORD       - CUPS password (default: admin)"
     echo ""
     echo "Examples:"
-    echo "  $0 build                    # Build the Docker image"
+    echo "  $0 build                    # Build the Podman image"
     echo "  $0 run                      # Build (if needed) and run container"
     echo "  HTTP_PORT=8631 $0 run       # Run on different port"
     echo "  $0 logs                     # Show container logs"
@@ -47,8 +47,8 @@ function show_usage() {
 }
 
 function build_image() {
-    log_info "Building Docker image: $IMAGE_NAME"
-    if docker build -t "$IMAGE_NAME" .; then
+    log_info "Building Podman image: $IMAGE_NAME"
+    if podman build -t "$IMAGE_NAME" .; then
         log_info "Build completed successfully"
     else
         log_error "Build failed"
@@ -58,8 +58,8 @@ function build_image() {
 
 function stop_container() {
     log_info "Stopping container: $CONTAINER_NAME"
-    if docker ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
-        if docker stop "$CONTAINER_NAME" >/dev/null; then
+    if podman ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
+        if podman stop "$CONTAINER_NAME" >/dev/null; then
             log_info "Container stopped"
         else
             log_warning "Could not stop container"
@@ -71,8 +71,8 @@ function stop_container() {
 
 function remove_container() {
     log_info "Removing container: $CONTAINER_NAME"
-    if docker ps -aq --filter "name=$CONTAINER_NAME" | grep -q .; then
-        if docker rm "$CONTAINER_NAME" >/dev/null; then
+    if podman ps -aq --filter "name=$CONTAINER_NAME" | grep -q .; then
+        if podman rm "$CONTAINER_NAME" >/dev/null; then
             log_info "Container removed"
         else
             log_warning "Could not remove container"
@@ -92,7 +92,7 @@ function start_container() {
     remove_container
     
     # Start new container
-    container_id=$(docker run -d \
+    container_id=$(podman run -d \
         --name "$CONTAINER_NAME" \
         -p "${HTTP_PORT}:631" \
         -e CUPS_USERNAME="$USERNAME" \
@@ -110,19 +110,19 @@ function start_container() {
         
         # Wait a moment and check if container is still running
         sleep 5
-        if docker ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
+        if podman ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
             log_info "Container is running healthy"
             log_info "Checking CUPS service status..."
             
             # Quick health check
-            if docker exec "$CONTAINER_NAME" ps aux | grep -q cupsd; then
+            if podman exec "$CONTAINER_NAME" ps aux | grep -q cupsd; then
                 log_info "CUPS service is running inside container"
             else
                 log_warning "CUPS service may not be fully started yet"
             fi
         else
             log_error "Container stopped unexpectedly, checking logs..."
-            docker logs "$CONTAINER_NAME"
+            podman logs "$CONTAINER_NAME"
             exit 1
         fi
     else
@@ -133,8 +133,8 @@ function start_container() {
 
 function show_logs() {
     log_info "Showing logs for container: $CONTAINER_NAME"
-    if docker ps -q --filter "name=$CONTAINER_NAME" | grep -q . || docker ps -aq --filter "name=$CONTAINER_NAME" | grep -q .; then
-        docker logs -f "$CONTAINER_NAME"
+    if podman ps -q --filter "name=$CONTAINER_NAME" | grep -q . || podman ps -aq --filter "name=$CONTAINER_NAME" | grep -q .; then
+        podman logs -f "$CONTAINER_NAME"
     else
         log_error "Container $CONTAINER_NAME does not exist"
         exit 1
@@ -142,30 +142,30 @@ function show_logs() {
 }
 
 function cleanup_all() {
-    log_info "Cleaning up Docker resources"
+    log_info "Cleaning up Podman resources"
     stop_container
     remove_container
     
     # Remove dangling images
-    dangling_images=$(docker images -f "dangling=true" -q)
+    dangling_images=$(podman images -f "dangling=true" -q)
     if [ -n "$dangling_images" ]; then
         log_info "Removing dangling images"
-        echo "$dangling_images" | xargs docker rmi
+        echo "$dangling_images" | xargs podman rmi
     fi
     
     log_info "Cleanup completed"
 }
 
 function show_status() {
-    log_info "Docker containers:"
-    docker ps -a --filter "name=$CONTAINER_NAME"
+    log_info "Podman containers:"
+    podman ps -a --filter "name=$CONTAINER_NAME"
     
-    log_info "Docker images:"
-    docker images | grep "$(echo "$IMAGE_NAME" | cut -d':' -f1)" || true
+    log_info "Podman images:"
+    podman images | grep "$(echo "$IMAGE_NAME" | cut -d':' -f1)" || true
 }
 
 # Main script logic
-log_info "HomeAssistant CUPS Docker Manager"
+log_info "HomeAssistant CUPS Podman Manager"
 log_info "Action: $ACTION"
 
 case "$ACTION" in
@@ -174,7 +174,7 @@ case "$ACTION" in
         ;;
     "run")
         # Check if image exists, build if not
-        if ! docker images -q "$IMAGE_NAME" | grep -q .; then
+        if ! podman images -q "$IMAGE_NAME" | grep -q .; then
             log_warning "Image $IMAGE_NAME not found, building first..."
             build_image
         fi

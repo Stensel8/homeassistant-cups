@@ -1,17 +1,23 @@
 ARG BUILD_FROM=ubuntu:22.04
 FROM ${BUILD_FROM}
 
-ARG CUPS_VERSION=2.4.12
+ARG CUPS_VERSION=2.4.14
 
 LABEL io.hass.version="1.2.1" io.hass.type="addon" io.hass.arch="aarch64|amd64"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install dependencies and build CUPS
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update --fix-missing
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash build-essential gcc make pkg-config wget ca-certificates \
     libssl-dev libdbus-1-dev libavahi-client-dev libavahi-common-dev \
-    libpam0g-dev libusb-1.0-0-dev \
+    libpam0g-dev libusb-1.0-0-dev
+
+RUN apt-get install -y --no-install-recommends \
     sudo locales avahi-daemon libnss-mdns dbus openssl curl \
     printer-driver-all openprinting-ppds hpijs-ppds hp-ppd hplip \
     printer-driver-foo2zjs printer-driver-hpcups printer-driver-escpr \

@@ -44,9 +44,9 @@ function Write-Warning {
 }
 
 function Build-Image {
-    Write-Info "Building Docker image: $ImageName"
+    Write-Info "Building Podman image: $ImageName"
     try {
-        docker build -t $ImageName .
+        podman build -t $ImageName .
         Write-Info "Build completed successfully"
     }
     catch {
@@ -63,9 +63,9 @@ function Stop-Container {
     }
     
     try {
-        $running = docker ps -q --filter "name=$ContainerName" 2>$null
+        $running = podman ps -q --filter "name=$ContainerName" 2>$null
         if ($running) {
-            docker stop $ContainerName | Out-Null
+            podman stop $ContainerName | Out-Null
             if (-not $Silent) {
                 Write-Info "Container stopped"
             }
@@ -94,9 +94,9 @@ function Remove-Container {
     }
     
     try {
-        $exists = docker ps -aq --filter "name=$ContainerName" 2>$null
+        $exists = podman ps -aq --filter "name=$ContainerName" 2>$null
         if ($exists) {
-            docker rm $ContainerName | Out-Null
+            podman rm $ContainerName | Out-Null
             if (-not $Silent) {
                 Write-Info "Container removed"
             }
@@ -122,7 +122,7 @@ function Start-Container {
     
     # Check if container is already running
     if (-not $ForceRestart) {
-        $running = docker ps -q --filter "name=$ContainerName" 2>$null
+        $running = podman ps -q --filter "name=$ContainerName" 2>$null
         if ($running) {
             Write-Info "Container $ContainerName is already running"
             Write-Info "Container ID: $running"
@@ -140,7 +140,7 @@ function Start-Container {
     
     try {
         # Only stop/remove if we need to restart or if exists but not running
-        $exists = docker ps -aq --filter "name=$ContainerName" 2>$null
+        $exists = podman ps -aq --filter "name=$ContainerName" 2>$null
         if ($exists) {
             $wasStopped = Stop-Container -Silent:$true
             $wasRemoved = Remove-Container -Silent:$true
@@ -153,32 +153,43 @@ function Start-Container {
             }
         }
         
-        # Build docker run command
-        $dockerArgs = @(
-            "run", "-d"
-            "--name", $ContainerName
-            "-p", "${CupsPort}:631"
-            "-p", "${MgmtPort}:8080"
-            "-e", "CUPS_USERNAME=$Username"
-            "-e", "CUPS_PASSWORD=$Password"
-            "-e", "SERVER_NAME=CUPS Print Server"
-            "-e", "SSL_ENABLED=true"
-            "-v", "${PWD}/addon-config:/config"
-            "--restart", "unless-stopped"
+        # Build podman run command
+        $podmanArgs = @(
+            "run"
+            "-d"
+            "--name"
+            $ContainerName
+            "-p"
+            "${CupsPort}:631"
+            "-p"
+            "${MgmtPort}:8080"
+            "-e"
+            "CUPS_USERNAME=$Username"
+            "-e"
+            "CUPS_PASSWORD=$Password"
+            "-e"
+            "SERVER_NAME=CUPS Print Server"
+            "-e"
+            "SSL_ENABLED=true"
+            "-v"
+            "${PWD}/addon-config:/config"
+            "--restart"
+            "unless-stopped"
         )
         
         # Add privileged mode if requested
         if ($Privileged) {
-            $dockerArgs += "--privileged"
+            $podmanArgs += "--privileged"
             Write-Info "Running in privileged mode (for USB printer support)"
         }
         
-        $dockerArgs += $ImageName
-        
+        $podmanArgs += $ImageName
+
         # Start new container
-        $containerId = & docker @dockerArgs
-            
-        if ($containerId) {
+        Write-Info "Executing: podman $($podmanArgs -join ' ')"
+        $containerId = & podman @podmanArgs
+        
+        if ($LASTEXITCODE -eq 0 -and $containerId) {
             Write-Info "Container started successfully"
             Write-Info "Container ID: $containerId"
             Write-Info "CUPS Web Interface: https://localhost:$CupsPort"
@@ -187,14 +198,14 @@ function Start-Container {
             
             # Wait a moment and check if container is still running
             Start-Sleep -Seconds 5
-            $running = docker ps -q --filter "name=$ContainerName"
+            $running = podman ps -q --filter "name=$ContainerName"
             if ($running) {
                 Write-Info "Container is running healthy"
                 Write-Info "Checking services status..."
                 
                 # Quick health check
                 Start-Sleep -Seconds 3
-                $healthCheck = docker exec $ContainerName ps aux | Select-String "cupsd|supervisord"
+                $healthCheck = podman exec $ContainerName ps aux | Select-String "cupsd|supervisord"
                 if ($healthCheck) {
                     Write-Info "Services are running inside container"
                     Write-Info "You can now access:"
@@ -206,12 +217,15 @@ function Start-Container {
             }
             else {
                 Write-Error "Container stopped unexpectedly, checking logs..."
-                docker logs $ContainerName
+                podman logs $ContainerName
                 exit 1
             }
         }
         else {
-            Write-Error "Failed to start container"
+            Write-Error "Failed to start container (Exit code: $LASTEXITCODE)"
+            if ($containerId) {
+                Write-Error "Output: $containerId"
+            }
             exit 1
         }
     }
@@ -224,7 +238,7 @@ function Start-Container {
 function Show-Logs {
     Write-Info "Showing logs for container: $ContainerName"
     try {
-        docker logs -f $ContainerName
+        podman logs -f $ContainerName
     }
     catch {
         Write-Error "Could not show logs: $_"
@@ -233,16 +247,16 @@ function Show-Logs {
 }
 
 function Clear-Resources {
-    Write-Info "Cleaning up Docker resources"
+    Write-Info "Cleaning up Podman resources"
     $null = Stop-Container
     $null = Remove-Container
     
     try {
         # Remove dangling images
-        $danglingImages = docker images -f "dangling=true" -q
+        $danglingImages = podman images -f "dangling=true" -q
         if ($danglingImages) {
             Write-Info "Removing dangling images"
-            docker rmi $danglingImages
+            podman rmi $danglingImages
         }
         
         Write-Info "Cleanup completed"
@@ -254,12 +268,12 @@ function Clear-Resources {
 
 function Show-Usage {
     Write-Host @"
-HomeAssistant CUPS Docker Manager v2.0
+HomeAssistant CUPS Podman Manager v2.0
 
 Usage: .\run.ps1 [-Action <action>] [options]
 
 Actions:
-  build     - Build the Docker image
+  build     - Build the Podman image
   run       - Build (if needed) and run container  
   stop      - Stop the container gracefully
   restart   - Restart the container
@@ -275,7 +289,7 @@ Actions:
 
 Options:
   -ContainerName <name>    Container name (default: homeassistant-cups)
-  -ImageName <name>        Docker image name (default: cups-addon:ha-integration)
+  -ImageName <name>        Podman image name (default: cups-addon:ha-integration)
   -CupsPort <port>         CUPS port mapping (default: 631)
   -MgmtPort <port>         Management port mapping (default: 8080)
   -Username <username>     CUPS username (default: print)
@@ -284,7 +298,7 @@ Options:
 
 Examples:
   .\run.ps1                                         # Build and run with defaults
-  .\run.ps1 -Action build                           # Build the Docker image
+  .\run.ps1 -Action build                           # Build the Podman image
   .\run.ps1 -Action run -CupsPort 8631 -Privileged # Run on different port with USB support
   .\run.ps1 -Action status                          # Show detailed status
   .\run.ps1 -Action shell                           # Open shell for debugging
@@ -300,19 +314,19 @@ Access URLs (when running):
 
 function Show-Status {
     Write-Info "Container Status:"
-    $containerStatus = docker ps -a --filter "name=$ContainerName" --format "table {{.Names}}`t{{.Status}}`t{{.Ports}}"
+    $containerStatus = podman ps -a --filter "name=$ContainerName" --format "table {{.Names}}`t{{.Status}}`t{{.Ports}}"
     Write-Host $containerStatus
     
     Write-Info "`nImage Information:"
-    $imageInfo = docker images | Select-String -Pattern $ImageName.Split(':')[0]
+    $imageInfo = podman images | Select-String -Pattern $ImageName.Split(':')[0]
     Write-Host $imageInfo
     
     # Check if container is running and get more details
-    $running = docker ps -q --filter "name=$ContainerName"
+    $running = podman ps -q --filter "name=$ContainerName"
     if ($running) {
         Write-Info "`nServices Status:"
         try {
-            $processes = docker exec $ContainerName ps aux
+            $processes = podman exec $ContainerName ps aux
             
             # Check CUPS
             $cupsProcess = $processes | Select-String "cupsd"
@@ -341,7 +355,7 @@ function Show-Status {
             # Test web interfaces
             Write-Info "`nWeb Interface Tests:"
             try {
-                $cupsResponse = docker exec $ContainerName curl -s -k -o /dev/null -w "%{http_code}" https://localhost:631
+                $cupsResponse = podman exec $ContainerName curl -s -k -o /dev/null -w "%{http_code}" https://localhost:631
                 if ($cupsResponse -eq "200" -or $cupsResponse -eq "401") {
                     Write-Host "CUPS web interface is responding (HTTP $cupsResponse)" -ForegroundColor Green
                 } else {
@@ -352,7 +366,7 @@ function Show-Status {
             }
             
             try {
-                $mgmtResponse = docker exec $ContainerName curl -s -o /dev/null -w "%{http_code}" http://localhost:8080
+                $mgmtResponse = podman exec $ContainerName curl -s -o /dev/null -w "%{http_code}" http://localhost:8080
                 if ($mgmtResponse -eq "200") {
                     Write-Host "Management interface is responding (HTTP $mgmtResponse)" -ForegroundColor Green
                 } else {
@@ -372,7 +386,7 @@ function Show-Status {
         Write-Host "Username: $Username" -ForegroundColor Cyan
         
         Write-Info "`nContainer Resources:"
-        $stats = docker stats $ContainerName --no-stream --format "table {{.CPUPerc}}`t{{.MemUsage}}`t{{.NetIO}}"
+        $stats = podman stats $ContainerName --no-stream --format "table {{.CPUPerc}}`t{{.MemUsage}}`t{{.NetIO}}"
         Write-Host $stats
         
     } else {
@@ -383,9 +397,9 @@ function Show-Status {
 function Kill-Container {
     Write-Warning "Force killing container: $ContainerName"
     try {
-        $running = docker ps -q --filter "name=$ContainerName" 2>$null
+        $running = podman ps -q --filter "name=$ContainerName" 2>$null
         if ($running) {
-            docker kill $ContainerName | Out-Null
+            podman kill $ContainerName | Out-Null
             Write-Info "Container killed"
             return $true
         } else {
@@ -402,9 +416,9 @@ function Kill-Container {
 function Pause-Container {
     Write-Info "Pausing container: $ContainerName"
     try {
-        $running = docker ps -q --filter "name=$ContainerName" 2>$null
+        $running = podman ps -q --filter "name=$ContainerName" 2>$null
         if ($running) {
-            docker pause $ContainerName | Out-Null
+            podman pause $ContainerName | Out-Null
             Write-Info "Container paused"
             return $true
         } else {
@@ -421,7 +435,7 @@ function Pause-Container {
 function Unpause-Container {
     Write-Info "Unpausing container: $ContainerName"
     try {
-        docker unpause $ContainerName | Out-Null
+        podman unpause $ContainerName | Out-Null
         Write-Info "Container unpaused"
         return $true
     }
@@ -454,10 +468,10 @@ function Show-Config {
 function Open-Shell {
     Write-Info "Opening interactive shell in container: $ContainerName"
     try {
-        $running = docker ps -q --filter "name=$ContainerName"
+        $running = podman ps -q --filter "name=$ContainerName"
         if ($running) {
             Write-Info "Starting bash shell... (type 'exit' to return)"
-            docker exec -it $ContainerName bash
+            podman exec -it $ContainerName bash
         } else {
             Write-Error "Container is not running"
         }
@@ -468,7 +482,7 @@ function Open-Shell {
 }
 
 # Main script logic
-Write-Info "HomeAssistant CUPS Docker Manager v2.0"
+Write-Info "HomeAssistant CUPS Podman Manager v2.0"
 Write-Info "Action: $Action"
 
 switch ($Action) {
@@ -477,7 +491,7 @@ switch ($Action) {
     }
     "run" {
         # Check if image exists, build if not
-        $imageExists = docker images -q $ImageName
+        $imageExists = podman images -q $ImageName
         if (-not $imageExists) {
             Write-Warning "Image $ImageName not found, building first..."
             Build-Image
@@ -489,7 +503,7 @@ switch ($Action) {
     }
     "restart" {
         Write-Info "Restarting container..."
-        $running = docker ps -q --filter "name=$ContainerName" 2>$null
+        $running = podman ps -q --filter "name=$ContainerName" 2>$null
         if ($running) {
             $null = Stop-Container
             Start-Sleep -Seconds 2
