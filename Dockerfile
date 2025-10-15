@@ -1,9 +1,9 @@
-ARG BUILD_FROM=ubuntu:22.04
+ARG BUILD_FROM=ubuntu:25.10
 FROM ${BUILD_FROM}
 
-ARG CUPS_VERSION=2.4.12
+ARG CUPS_VERSION=2.4.14
 
-LABEL io.hass.version="1.2.1" io.hass.type="addon" io.hass.arch="aarch64|amd64"
+LABEL io.hass.version="2.0.0" io.hass.type="addon" io.hass.arch="aarch64|amd64"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 

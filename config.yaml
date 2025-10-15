@@ -1,5 +1,5 @@
 name: "CUPS Print Server"
-version: "1.2.1"
+version: "2.0.0"
 slug: cups-server
 description: "Advanced CUPS print server with AirPrint support and management interface"
 author: "Stensel8"
