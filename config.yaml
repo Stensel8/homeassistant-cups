@@ -32,3 +32,14 @@ schema:
   cupsport: port
   sslenabled: bool
   allowremoteadmin: bool
+ports:
+  "631/tcp": 631
+ports_description:
+  "631/tcp": "CUPS web interface (HTTPS)"
+# Expose a dynamic web UI URL so Home Assistant/Supervisor shows the real host URL
+# [HOST] will be replaced by the Supervisor with the actual host address when shown
+webui: "https://[HOST]:631"
+# Use Home Assistant Supervisor ingress so the add-on panel connects via the
+# Supervisor proxy. This avoids direct host firewall/network issues that can
+# cause ERR_CONNECTION_REFUSED when HA tries to reach https://host:631.
+ingress: true

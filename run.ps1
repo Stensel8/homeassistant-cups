@@ -26,6 +26,26 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Try to determine a non-loopback local IPv4 address to show reachability instead of 'localhost'
+function Get-LocalIP {
+    try {
+        $entry = [System.Net.Dns]::GetHostEntry($env:COMPUTERNAME)
+        $addr = $entry.AddressList | Where-Object { $_.AddressFamily -eq 'InterNetwork' } | Select-Object -First 1
+        if ($addr) { return $addr.IPAddressToString }
+    } catch {
+        # ignore and try next method
+    }
+    try {
+        $ip = Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress } | Select-Object -First 1 -ExpandProperty IPAddress
+        if ($ip) { return $ip }
+    } catch {
+        # fallback
+    }
+    return 'localhost'
+}
+
+$HostIP = Get-LocalIP
+
 function Write-Info {
     param([string]$Message)
     Write-Host "[INFO] $Message" -ForegroundColor Green
@@ -124,7 +144,7 @@ function Start-Container {
         if ($running) {
                     Write-Info "Container $ContainerName is already running"
                     Write-Info "Container ID: $running"
-                    Write-Info "CUPS Web Interface: https://localhost:$CupsPort"
+                    Write-Info "CUPS Web Interface: https://$($HostIP):$($CupsPort)"
                     Write-Info "Login with: $Username / $Password"
             return
         }
@@ -188,7 +208,7 @@ function Start-Container {
         if ($LASTEXITCODE -eq 0 -and $containerId) {
             Write-Info "Container started successfully"
             Write-Info "Container ID: $containerId"
-            Write-Info "CUPS Web Interface: https://localhost:$CupsPort"
+            Write-Info "CUPS Web Interface: https://$($HostIP):$($CupsPort)"
             Write-Info "Login with: $Username / $Password"
             
             # Wait a moment and check if container is still running
@@ -204,7 +224,7 @@ function Start-Container {
                 if ($healthCheck) {
                     Write-Info "Services are running inside container"
                     Write-Info "You can now access:"
-                    Write-Host "  - CUPS Interface: https://localhost:$CupsPort" -ForegroundColor Cyan
+                    Write-Host "  - CUPS Interface: https://$($HostIP):$($CupsPort)" -ForegroundColor Cyan
                 } else {
                     Write-Warning "Services may not be fully started yet"
                 }
@@ -300,7 +320,7 @@ Examples:
   .\run.ps1 -Action clean                           # Full cleanup
 
 Access URLs (when running):
-    CUPS Interface: https://localhost:<CupsPort>
+    CUPS Interface: https://$($HostIP):$($CupsPort)
 
 "@
 }
@@ -359,7 +379,7 @@ function Show-Status {
         }
         
     Write-Info "`nAccess Information:"
-    Write-Host "CUPS Interface: https://localhost:$CupsPort" -ForegroundColor Cyan
+    Write-Host "CUPS Interface: https://$($HostIP):$($CupsPort)" -ForegroundColor Cyan
     Write-Host "Username: $Username" -ForegroundColor Cyan
         
         Write-Info "`nContainer Resources:"
