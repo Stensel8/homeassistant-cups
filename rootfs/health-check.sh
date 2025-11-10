@@ -5,7 +5,7 @@ set -e
 echo "[HEALTH] Starting health check..."
 
 # Check if CUPS daemon is running
-if ! pgrep -x cupsd >/dev/null 2>&1; then
+if ! ps aux | grep -v grep | grep -q cupsd; then
     echo "[HEALTH] FAIL: CUPS daemon not running"
     exit 1
 else
@@ -31,7 +31,7 @@ else
 fi
 
 # Check if Avahi is running (for service discovery)
-if ! pgrep -x avahi-daemon >/dev/null 2>&1; then
+if ! ps aux | grep -v grep | grep -q avahi-daemon; then
     echo "[HEALTH] FAIL: Avahi daemon not running"
     exit 1
 else

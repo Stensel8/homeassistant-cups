@@ -133,6 +133,11 @@ if command -v bashio >/dev/null 2>&1; then
     exec /usr/bin/supervisord -c /etc/supervisor/conf.d/services.conf
 else
     echo "[INFO] Running in standalone mode"
+    echo "[INFO] Starting D-Bus..."
+    mkdir -p /var/run/dbus
+    dbus-daemon --system --fork
+    echo "[INFO] Starting Avahi daemon..."
+    avahi-daemon --daemonize
     echo "[INFO] CUPS Web Interface: https://localhost:631"
     echo "[INFO] Username: print"
     # Keep the container running

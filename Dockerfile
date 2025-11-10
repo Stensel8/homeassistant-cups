@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libdbus-1-dev \
   zlib1g-dev \
   net-tools \
+  procps \
   socat \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
