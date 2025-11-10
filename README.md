@@ -1,7 +1,7 @@
 
 # CUPS Print Server Add-on for Home Assistant
 
-A simple, secure CUPS 2.4.12 print server with Home Assistant integration and an embedded web interface (Ingress).
+A simple, secure CUPS print server with Home Assistant integration and an embedded web interface (Ingress).
 
 [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FStensel8%2Fhomeassistant-cups)
 
@@ -65,4 +65,4 @@ automation:
 - Default credentials are `print/print` (change them).
 
 ## Version
-Current version: 1.2.1
+Current version: 2.0.0 (2025-10-15)
