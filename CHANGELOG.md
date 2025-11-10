@@ -4,12 +4,17 @@ All notable changes to this project are documented here.
 
 ## 1.3.0 - 2025-11-10
 ### Added
-- Support metadata and configuration synced to require Home Assistant Core and Supervisor 2025.11.1
-- Marked `config.json` as deprecated and consolidated settings into `config.yaml`
-- Support notes for Operating System 16.3 and Frontend 20251105.0
+- Synced support metadata and configuration; requires Home Assistant Core & Supervisor 2025.11.1
+- Deprecated config.json and consolidated settings into config.yaml
+- Notes for Operating System 16.3 and Frontend 20251105.0
+- English documentation and improved logging
+- Secure HTTPS-only CUPS
+- Configurable admin credentials via the Home Assistant add-on config panel
+- Status and uptime statistics in the add-on GUI
 
 ### Changed
 - Bumped project version to 1.3.0 and synchronized configuration files
+- Consolidated release metadata and settings for simpler maintenance
 
 
 ## 1.2.1 - 2025-08-21
@@ -46,6 +51,6 @@ All notable changes to this project are documented here.
 ## 1.0.0 - 2025-08-15
 ### Added
 - Initial release
-- CUPS 2.4.12 with IPP support
+- CUPS 2.4.2 with IPP support
 - HTTPS support
 - Home Assistant add-on integration

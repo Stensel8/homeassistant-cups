@@ -1,25 +1,29 @@
+# CUPS Print Server - Home Assistant Add-on
 
-CUPS Print Server (Home Assistant add-on)
+This add-on runs a secure CUPS (Unix Printing System) server on port 631 (HTTPS only) with full admin support.
 
-What this does
-- Runs CUPS (IPP) on port 631 (HTTPS)
+## Features
+- Secure CUPS server accessible via HTTPS
+- Home Assistant configuration for admin username/password
+- Web interface with admin privileges
+- AirPrint support
+- Automatic status and stats logging for monitoring within the add-on tab
 
-Install (Supervisor)
-- Add repository URL in Supervisor -> Add-on Store
-- Install the add-on and start it
+## Installation
+1. Add the repository URL in Supervisor -> Add-on Store
+2. Install and start the add-on
 
-Build and run locally (optional)
+## Configuration
+Change the admin username and password via the Home Assistant add-on GUI options.
 
-```powershell
-docker build -t homeassistant-cups:local .
-docker run --rm -d -p 631:631 --name cups-local homeassistant-cups:local
-```
+## Access
+- CUPS Web Interface: https://localhost:631/
+- Username and password: Set in the add-on options
 
-Quick check
-- CUPS (local): https://localhost:631/ (self-signed cert)
+## Status Panel
+Live stats and uptime are available in the add-on tab.
 
-Configuration
-- Configure via Supervisor add-on options.
-
-Minimal. No extras.
-
+## Troubleshooting
+- Ensure port 631 is available and not blocked by firewalls
+- Accept the self-signed SSL certificate for first-time access
+- For "Forbidden" errors, make sure your username is in the lpadmin group in run.sh
