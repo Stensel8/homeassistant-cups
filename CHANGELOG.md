@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here.
 
+## 1.3.0 - 2025-11-10
+### Added
+- Support metadata and configuration synced to require Home Assistant Core and Supervisor 2025.11.1
+- Marked `config.json` as deprecated and consolidated settings into `config.yaml`
+- Support notes for Operating System 16.3 and Frontend 20251105.0
+
+### Changed
+- Bumped project version to 1.3.0 and synchronized configuration files
+
+
 ## 1.2.1 - 2025-08-21
 ### Changed
 - Documentation simplified and translated to English

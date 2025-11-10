@@ -1,41 +1,43 @@
 name: "CUPS Print Server"
-version: "1.2.1"
+version: "1.3.0"
 slug: cups-server
-description: "Advanced CUPS print server with AirPrint support and management interface"
+description: "Advanced CUPS print server with AirPrint support"
 author: "Stensel8"
 url: "https://github.com/Stensel8/homeassistant-cups"
 arch:
-  - amd64
   - aarch64
+  - amd64
+  - armv7
+  - i386
+startup: services
+boot: auto
+homeassistant: "2025.11.1"
+supervisor: "2025.11.1"
+operating_system: "16.3"
+frontend: "20251105.0"
+installation:
+  - "Home Assistant OS"
+  - "Core"
+  - "Supervisor"
 usb: true
 init: false
 homeassistant_api: true
-host_network: false
+host_network: true
 hassio_api: true
 hassio_role: manager
 privileged:
   - SYS_ADMIN
 devices:
   - /dev/bus/usb
-ports:
-  "631/tcp": 631
-  "631/udp": 631
-  "8080/tcp": null
-ports_description:
-  "631/tcp": "HTTPS IPP printing"
-  "631/udp": "mDNS service discovery"
-  "8080/tcp": "Management Web Interface"
+ports: {}
+ports_description: {}
 map:
   - addon_config:rw
   - share:rw
-ingress: true
-ingress_port: 8080
-panel_icon: mdi:printer
-panel_title: "CUPS Print Server"
-webui: "[INGRESS_URL]"
+  - config:rw
 services:
   - cups.restart_service
-  - cups.stop_service  
+  - cups.stop_service
   - cups.start_service
   - cups.get_status
   - cups.update_config
@@ -45,7 +47,6 @@ options:
   cups_password: "print"
   server_name: "CUPS Print Server"
   cups_port: 631
-  management_port: 8080
   max_jobs: 100
   ssl_enabled: true
   log_level: "info"
@@ -57,7 +58,6 @@ schema:
   cups_password: password
   server_name: str
   cups_port: port
-  management_port: port
   max_jobs: int(1,500)
   ssl_enabled: bool
   log_level: list(debug|info|warning|error)

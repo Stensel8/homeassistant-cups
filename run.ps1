@@ -13,8 +13,6 @@ param(
     [Parameter(HelpMessage="CUPS port mapping")]
     [int]$CupsPort = 631,
     
-    [Parameter(HelpMessage="Management port mapping")]
-    [int]$MgmtPort = 8080,
     
     [Parameter(HelpMessage="CUPS username")]
     [string]$Username = "print",
@@ -124,18 +122,16 @@ function Start-Container {
     if (-not $ForceRestart) {
         $running = podman ps -q --filter "name=$ContainerName" 2>$null
         if ($running) {
-            Write-Info "Container $ContainerName is already running"
-            Write-Info "Container ID: $running"
-            Write-Info "CUPS Web Interface: https://localhost:$CupsPort"
-            Write-Info "Management Interface: http://localhost:$MgmtPort"
-            Write-Info "Login with: $Username / $Password"
+                    Write-Info "Container $ContainerName is already running"
+                    Write-Info "Container ID: $running"
+                    Write-Info "CUPS Web Interface: https://localhost:$CupsPort"
+                    Write-Info "Login with: $Username / $Password"
             return
         }
     }
     
     Write-Info "Starting container: $ContainerName"
     Write-Info "CUPS Port: ${CupsPort}:631"
-    Write-Info "Management Port: ${MgmtPort}:8080"
     Write-Info "Credentials: $Username / $Password"
     
     try {
@@ -193,7 +189,6 @@ function Start-Container {
             Write-Info "Container started successfully"
             Write-Info "Container ID: $containerId"
             Write-Info "CUPS Web Interface: https://localhost:$CupsPort"
-            Write-Info "Management Interface: http://localhost:$MgmtPort"
             Write-Info "Login with: $Username / $Password"
             
             # Wait a moment and check if container is still running
@@ -210,7 +205,6 @@ function Start-Container {
                     Write-Info "Services are running inside container"
                     Write-Info "You can now access:"
                     Write-Host "  - CUPS Interface: https://localhost:$CupsPort" -ForegroundColor Cyan
-                    Write-Host "  - Management Interface: http://localhost:$MgmtPort" -ForegroundColor Cyan
                 } else {
                     Write-Warning "Services may not be fully started yet"
                 }
@@ -291,7 +285,7 @@ Options:
   -ContainerName <name>    Container name (default: homeassistant-cups)
   -ImageName <name>        Podman image name (default: cups-addon:ha-integration)
   -CupsPort <port>         CUPS port mapping (default: 631)
-  -MgmtPort <port>         Management port mapping (default: 8080)
+    #-MgmtPort <port>         Management port mapping (default: 8080)
   -Username <username>     CUPS username (default: print)
   -Password <password>     CUPS password (default: print)
   -Privileged              Run in privileged mode (for USB printer support)
@@ -306,8 +300,7 @@ Examples:
   .\run.ps1 -Action clean                           # Full cleanup
 
 Access URLs (when running):
-  CUPS Interface: https://localhost:<CupsPort>
-  Management Interface: http://localhost:<MgmtPort>
+    CUPS Interface: https://localhost:<CupsPort>
 
 "@
 }
@@ -336,13 +329,7 @@ function Show-Status {
                 Write-Host "CUPS daemon is not running" -ForegroundColor Red
             }
             
-            # Check Management API
-            $apiProcess = $processes | Select-String "cups-management-api"
-            if ($apiProcess) {
-                Write-Host "Management API is running" -ForegroundColor Green
-            } else {
-                Write-Host "Management API is not running" -ForegroundColor Red
-            }
+            # Management API removed; skip check
             
             # Check Supervisor
             $supervisorProcess = $processes | Select-String "supervisord"
@@ -365,25 +352,15 @@ function Show-Status {
                 Write-Host "Warning: Could not test CUPS web interface" -ForegroundColor Yellow
             }
             
-            try {
-                $mgmtResponse = podman exec $ContainerName curl -s -o /dev/null -w "%{http_code}" http://localhost:8080
-                if ($mgmtResponse -eq "200") {
-                    Write-Host "Management interface is responding (HTTP $mgmtResponse)" -ForegroundColor Green
-                } else {
-                    Write-Host "Warning: Management interface returned status: $mgmtResponse" -ForegroundColor Yellow
-                }
-            } catch {
-                Write-Host "Warning: Could not test Management interface" -ForegroundColor Yellow
-            }
+            # Management API removed; skipping API test
             
         } catch {
             Write-Host "Warning: Could not check service status" -ForegroundColor Yellow
         }
         
-        Write-Info "`nAccess Information:"
-        Write-Host "CUPS Interface: https://localhost:$CupsPort" -ForegroundColor Cyan
-        Write-Host "Management Interface: http://localhost:$MgmtPort" -ForegroundColor Cyan
-        Write-Host "Username: $Username" -ForegroundColor Cyan
+    Write-Info "`nAccess Information:"
+    Write-Host "CUPS Interface: https://localhost:$CupsPort" -ForegroundColor Cyan
+    Write-Host "Username: $Username" -ForegroundColor Cyan
         
         Write-Info "`nContainer Resources:"
         $stats = podman stats $ContainerName --no-stream --format "table {{.CPUPerc}}`t{{.MemUsage}}`t{{.NetIO}}"
@@ -450,7 +427,7 @@ function Show-Config {
     Write-Host "Container Name: $ContainerName" -ForegroundColor Yellow
     Write-Host "Image Name: $ImageName" -ForegroundColor Yellow
     Write-Host "CUPS Port: $CupsPort" -ForegroundColor Yellow
-    Write-Host "Management Port: $MgmtPort" -ForegroundColor Yellow
+    # Management port removed
     Write-Host "Username: $Username" -ForegroundColor Yellow
     Write-Host "Privileged Mode: $($Privileged.IsPresent)" -ForegroundColor Yellow
     

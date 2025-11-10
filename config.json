@@ -1,7 +1,7 @@
 {
-  "name": "CUPS printing server addon for use in HomeAssistant.",
-  "url": "https://github.com/Stensel8/homeassistant-cups",
-  "maintainer": "Sten Tijhuis (Stensel8)",
+  "deprecated": true,
+  "message": "This file has been merged into config.yaml. Please use config.yaml as the single configuration source.",
+  "merged_into": "config.yaml",
   "version": "1.3.0",
   "supported": {
     "installation": ["Home Assistant OS", "Core", "Supervisor"],
