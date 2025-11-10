@@ -1,52 +1,58 @@
-ARG BUILD_FROM=ubuntu:25.10
-FROM ${BUILD_FROM}
+FROM debian:bookworm-slim
 
-ARG CUPS_VERSION=2.4.14
+ARG DEBIAN_FRONTEND=noninteractive
 
-LABEL io.hass.version="2.0.0" io.hass.type="addon" io.hass.arch="aarch64|amd64"
+LABEL maintainer="Sten Tijhuis"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Install dependencies and build CUPS
+# Minimal image that uses packaged CUPS. Keep only what's needed to run CUPS.
+
+# Install dependencies for libcups build
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash build-essential gcc make pkg-config wget ca-certificates \
-    libssl-dev libdbus-1-dev libavahi-client-dev libavahi-common-dev \
-    libpam0g-dev libusb-1.0-0-dev \
-    sudo locales avahi-daemon libnss-mdns dbus openssl curl \
-    printer-driver-all openprinting-ppds hpijs-ppds hp-ppd hplip \
-    printer-driver-foo2zjs printer-driver-hpcups printer-driver-escpr \
-    gnupg2 lsb-release procps psmisc \
-    python3 python3-pip python3-dev supervisor \
-    mosquitto-clients jq curl && \
-    wget -qO /tmp/cups.tar.gz "https://github.com/OpenPrinting/cups/releases/download/v${CUPS_VERSION}/cups-${CUPS_VERSION}-source.tar.gz" && \
-    mkdir -p /tmp/cups && tar -xzf /tmp/cups.tar.gz -C /tmp/cups --strip-components=1 && \
-    cd /tmp/cups && \
-    ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
-        --enable-debug --enable-avahi --enable-dbus && \
-    make -j$(nproc) && make install && \
-    pip3 install flask requests && \
-    apt-get purge -y --auto-remove build-essential gcc make pkg-config wget ca-certificates && \
-    rm -rf /tmp/cups /tmp/cups.tar.gz /var/lib/apt/lists/* && \
-    mkdir -p /var/run/dbus /var/run/avahi-daemon /var/www/html && \
-    groupadd -f lpadmin && groupadd -f lp
+  build-essential \
+  avahi-daemon \
+  dbus \
+  openssl \
+  libssl-dev \
+  curl \
+  ca-certificates \
+  git \
+  pkg-config \
+  libgnutls28-dev \
+  libavahi-client-dev \
+  libdbus-1-dev \
+  zlib1g-dev \
+  net-tools \
+  procps \
+  socat \
+  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY rootfs /
+# Download and build libcups v3
+WORKDIR /tmp
+RUN curl -L -o cups-2.4.14-source.tar.gz https://github.com/OpenPrinting/cups/releases/download/v2.4.14/cups-2.4.14-source.tar.gz \
+  && echo "660288020dd6f79caf799811c4c1a3207a48689899ac2093959d70a3bdcb7699  cups-2.4.14-source.tar.gz" | sha256sum -c - \
+  && tar xzf cups-2.4.14-source.tar.gz \
+  && cd cups-2.4.14 \
+  && ./configure --prefix=/usr --disable-local-only --enable-shared --with-tls=openssl \
+  && make -j$(nproc) \
+  && make install \
+  && echo -e "/usr/lib\n/usr/local/lib\n/usr/lib64" > /etc/ld.so.conf.d/cups.conf \
+  && ldconfig \
+  && cd .. \
+  && rm -rf cups-2.4.14 cups-2.4.14-source.tar.gz
 
-RUN sed -i 's/\r$//' /generate-ssl.sh && chmod +x /generate-ssl.sh && \
-    sed -i 's/\r$//' /health-check.sh && chmod +x /health-check.sh && \
-    chmod +x /usr/bin/cups-management-api.py && \
-    chmod +x /start-services.sh && \
-    chmod +x /etc/services.d/cups-ha-integration/run && \
-    chmod +x /etc/services.d/cups-discovery/run
+# Copy runtime files
+COPY rootfs/ /
 
-# Create default user (will be reconfigured at runtime)
-RUN useradd --groups=sudo,lp,lpadmin --create-home --home-dir=/home/print --shell=/bin/bash print && \
-    echo "print:print" | chpasswd && \
-    echo "%sudo ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+# Ensure scripts have LF endings and are executable
+RUN sed -i 's/\r$//' /generate-ssl.sh && sed -i '1s/^\xEF\xBB\xBF//' /generate-ssl.sh && chmod +x /generate-ssl.sh || true
+RUN sed -i 's/\r$//' /health-check.sh && sed -i '1s/^\xEF\xBB\xBF//' /health-check.sh && chmod +x /health-check.sh || true
+RUN sed -i 's/\r$//' /start-services.sh && sed -i '1s/^\xEF\xBB\xBF//' /start-services.sh && chmod +x /start-services.sh || true
 
-EXPOSE 631 8080
+EXPOSE 631
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD /health-check.sh
+  CMD /health-check.sh || exit 1
 
 CMD ["/start-services.sh"]
