@@ -5,6 +5,7 @@ All notable changes to this project are documented here.
 ## 1.3.0 - 2025-11-10
 ### Added
 - Synced support metadata and configuration; requires Home Assistant Core & Supervisor 2025.11.1
+- Bumped to CUPS 2.4.14
 - Deprecated config.json and consolidated settings into config.yaml
 - Notes for Operating System 16.3 and Frontend 20251105.0
 - English documentation and improved logging
