@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 
+## 2.0.0 - 2025-10-15
+### Changed
+- Upgraded Ubuntu base image from 22.04 to 25.10
+- Upgraded CUPS from 2.4.12 to 2.4.14
+
 ## 1.2.1 - 2025-08-21
 ### Changed
 - Documentation simplified and translated to English
