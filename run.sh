@@ -8,13 +8,14 @@ CUPS_PASSWORD="${CUPS_PASSWORD:-admin}"
 
 # Add admin user for CUPS with lpadmin privileges
 if ! id "$CUPS_USERNAME" >/dev/null 2>&1; then
-    useradd --groups=lp,lpadmin --create-home --shell=/bin/bash "$CUPS_USERNAME"
+    useradd --groups=lpadmin,lp --create-home --shell=/bin/bash "$CUPS_USERNAME"
     echo "$CUPS_USERNAME:$CUPS_PASSWORD" | chpasswd
     echo "[INFO] Created admin user: $CUPS_USERNAME"
 else
     echo "[INFO] Admin user $CUPS_USERNAME already exists"
+    usermod -a -G lpadmin,lp "$CUPS_USERNAME"
     echo "$CUPS_USERNAME:$CUPS_PASSWORD" | chpasswd
-    echo "[INFO] Updated admin password"
+    echo "[INFO] Updated admin password and groups"
 fi
 
 # Prepare required directories
