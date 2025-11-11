@@ -70,8 +70,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     iproute2 \
   && rm -rf /var/lib/apt/lists/*
 
-# Copy ONLY the compiled CUPS binaries from builder stage
-COPY --from=builder /cups-install /
+# Copy ONLY the compiled CUPS binaries from builder stage (excluding /var/run to avoid symlink conflicts)
+COPY --from=builder /cups-install/usr /usr
+COPY --from=builder /cups-install/etc/cups /etc/cups
 
 # Install bashio (lightweight, no compilation needed)
 RUN curl -fsSL https://github.com/hassio-addons/bashio/archive/v0.16.2.tar.gz | tar xz \
