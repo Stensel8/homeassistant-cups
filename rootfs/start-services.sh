@@ -41,7 +41,7 @@ clear 2>/dev/null || true
 
 echo "════════════════════════════════════════════════════════════"
 echo "   CUPS Print Server for Home Assistant - Starting...       "
-echo "   Version: 1.3.1                                           "
+echo "   Version: 1.3.2                                           "
 echo "════════════════════════════════════════════════════════════"
 echo ""
 
@@ -74,7 +74,9 @@ fi
 # Read configuration from Home Assistant or use defaults
 log_info "Loading configuration..."
 if command -v bashio >/dev/null 2>&1; then
-    log_debug "✓ Bashio found"
+    # Check bashio version
+    BASHIO_VERSION=$(bashio --version 2>/dev/null | head -1 || echo "v0.16.2")
+    log_info "✓ Bashio found (version: ${BASHIO_VERSION})"
     
     # Wait longer for supervisor to be reachable (up to 15 seconds)
     CONNECTED=false
@@ -165,6 +167,53 @@ if [ -d /usr/etc/cups ]; then
     sed -i "s/^Listen localhost:[0-9]\+/Listen 0.0.0.0:631/" /usr/etc/cups/cupsd.conf 2>/dev/null || true
     
     log_debug "✓ Config synced to /usr/etc/cups"
+fi
+
+# Fix CUPS ServerName for proper HTTPS redirects
+log_info "Configuring CUPS ServerName for proper HTTPS redirects..."
+
+# Try to detect the host IP via gateway
+HOST_IP=$(ip route | grep default | awk '{print $3}' 2>/dev/null)
+
+if [ -z "$HOST_IP" ]; then
+    # Fallback: try to get from DNS or environment
+    HOST_IP=$(getent hosts host.docker.internal 2>/dev/null | awk '{print $1}')
+fi
+
+if [ -z "$HOST_IP" ]; then
+    # Last resort: use common private network gateway
+    HOST_IP="192.168.0.1"
+    log_warning "Could not auto-detect host IP, using default: $HOST_IP"
+else
+    log_info "Detected host IP: $HOST_IP"
+fi
+
+# Update cupsd.conf with proper ServerName
+if grep -q "^ServerName" /etc/cups/cupsd.conf; then
+    sed -i "s/^ServerName .*/ServerName ${HOST_IP}/" /etc/cups/cupsd.conf
+else
+    # Add ServerName after Listen directives
+    sed -i "/^Listen/a ServerName ${HOST_IP}" /etc/cups/cupsd.conf
+fi
+
+# Also add ServerAlias for all possible access points
+if ! grep -q "^ServerAlias" /etc/cups/cupsd.conf; then
+    sed -i "/^ServerName/a ServerAlias *" /etc/cups/cupsd.conf
+fi
+
+# Force HTTPS-only by ensuring DefaultEncryption is Required
+if grep -q "^DefaultEncryption" /etc/cups/cupsd.conf; then
+    sed -i "s/^DefaultEncryption .*/DefaultEncryption Required/" /etc/cups/cupsd.conf
+else
+    echo "DefaultEncryption Required" >> /etc/cups/cupsd.conf
+fi
+
+log_debug "✓ ServerName set to: ${HOST_IP}"
+log_debug "✓ HTTPS-only mode enforced"
+
+# Sync to /usr/etc/cups as well
+if [ -d /usr/etc/cups ] && [ ! -L /usr/etc/cups/cupsd.conf ]; then
+    cp -f /etc/cups/cupsd.conf /usr/etc/cups/cupsd.conf
 fi
 
 # Create or update CUPS user
