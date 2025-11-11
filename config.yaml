@@ -32,7 +32,5 @@ schema:
   cupsport: port
   sslenabled: bool
   allowremoteadmin: bool
-# Expose a dynamic web UI URL so Home Assistant/Supervisor shows the real host URL
-# [HOST] will be replaced by the Supervisor with the actual host address when shown
-webui: "https://[HOST]:631"
-ingress: false
+panel_icon: mdi:printer
+panel_title: CUPS Print Server
