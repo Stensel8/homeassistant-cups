@@ -1,146 +1,127 @@
 #!/bin/bash
 set -e
 
-echo "[DEBUG] Starting CUPS container initialization..."
+DEBUG=${DEBUG:-true}
+
+log_debug() {
+    [[ "$DEBUG" == "true" ]] && echo "[DEBUG] $1"
+}
+
+log_info() {
+    echo "[INFO] $1"
+}
+
+log_warning() {
+    echo "[WARNING] $1"
+}
+
+log_error() {
+    echo "[ERROR] $1"
+}
+
+log_info "Starting CUPS Print Server for Home Assistant"
 
 # Ensure lpadmin group exists
 if ! getent group lpadmin >/dev/null; then
-    echo "[DEBUG] Creating missing group: lpadmin"
+    log_debug "Creating lpadmin group"
     groupadd lpadmin
-    echo "[INFO] Created missing group: lpadmin"
-else
-    echo "[DEBUG] lpadmin group already exists"
 fi
 
-echo "[INFO] Starting CUPS v2 Print Server"
-
-# Configuration handling
-if command -v bashio >/dev/null 2>&1; then
-    CUPS_USERNAME=$(bashio::config "cupsusername" "print")
-    CUPS_PASSWORD=$(bashio::config "cupspassword" "print")
-    echo "[INFO] Configuration loaded from Home Assistant"
+# Read configuration from Home Assistant or use defaults
+if command -v bashio >/dev/null 2>&1 && bashio::supervisor.ping; then
+    log_info "Loading configuration from Home Assistant..."
+    CUPS_USERNAME=$(bashio::config 'cupsusername')
+    CUPS_PASSWORD=$(bashio::config 'cupspassword')
+    CUPS_PORT=$(bashio::config 'cupsport')
+    SSL_ENABLED=$(bashio::config 'sslenabled')
+    ALLOW_REMOTE_ADMIN=$(bashio::config 'allowremoteadmin')
+    log_info "Configuration loaded - Username: ${CUPS_USERNAME}, Port: ${CUPS_PORT}"
 else
-    CUPS_USERNAME="${CUPS_USERNAME:-print}"
-    CUPS_PASSWORD="${CUPS_PASSWORD:-print}"
-    echo "[INFO] Using environment variables"
+    log_warning "Not running in Home Assistant, using environment defaults"
+    CUPS_USERNAME="${CUPS_USERNAME:-admin}"
+    CUPS_PASSWORD="${CUPS_PASSWORD:-admin}"
+    CUPS_PORT="${CUPS_PORT:-631}"
+    SSL_ENABLED="${SSL_ENABLED:-true}"
+    ALLOW_REMOTE_ADMIN="${ALLOW_REMOTE_ADMIN:-true}"
 fi
 
-echo "[DEBUG] CUPS_USERNAME: $CUPS_USERNAME"
-
-# Ensure required directories exist and are writable
-echo "[DEBUG] Setting up required directories..."
+# Setup directories
+log_debug "Setting up CUPS directories..."
 for dir in /etc/cups /var/log/cups /var/run/cups /var/cache/cups /var/spool/cups; do
-    if [ ! -d "$dir" ]; then
-        mkdir -p "$dir"
-        echo "[DEBUG] Created directory: $dir"
-    else
-        echo "[DEBUG] Directory already exists: $dir"
-    fi
+    mkdir -p "$dir"
     chmod 755 "$dir"
 done
 
-# Setup CUPS v2 configuration
+# Copy persistent config if available
 if [ -d /config/cups ]; then
-    echo "[INFO] Using persistent CUPS configuration from /config/cups"
+    log_info "Using persistent CUPS configuration"
     cp -f /config/cups/* /etc/cups/ 2>/dev/null || true
-    echo "[DEBUG] Copied config files from /config/cups"
-elif [ -d /addon_config/cups ]; then
-    echo "[INFO] Using addon_config CUPS configuration from /addon_config/cups"
-    cp -f /addon_config/cups/* /etc/cups/ 2>/dev/null || true
-    echo "[DEBUG] Copied config files from /addon_config/cups"
 else
-    echo "[WARNING] No persistent CUPS config found, using defaults"
+    log_debug "No persistent config found, using defaults"
 fi
 
-# Setup user
-echo "[DEBUG] Setting up user: $CUPS_USERNAME"
+# Create or update CUPS user
+log_debug "Setting up user: ${CUPS_USERNAME}"
 if ! id "$CUPS_USERNAME" >/dev/null 2>&1; then
-    useradd --groups=sudo,lp,lpadmin --create-home --home-dir="/home/$CUPS_USERNAME" --shell=/bin/bash "$CUPS_USERNAME"
-    echo "[DEBUG] Created user: $CUPS_USERNAME"
-else
-    echo "[DEBUG] User already exists: $CUPS_USERNAME"
+    useradd --groups=lpadmin --create-home --shell=/bin/bash "$CUPS_USERNAME"
+    log_info "Created user: ${CUPS_USERNAME}"
 fi
+
 echo "$CUPS_USERNAME:$CUPS_PASSWORD" | chpasswd
-echo "[DEBUG] Set password for user: $CUPS_USERNAME"
+log_debug "Password set for user: ${CUPS_USERNAME}"
 
-# Set permissions for config files
+# Set config permissions
 chmod 644 /etc/cups/cupsd.conf 2>/dev/null || true
-echo "[DEBUG] Set permissions on cupsd.conf"
 
-# Generate SSL certificates if not present
+# Generate SSL certificates if needed
 if [ ! -f /etc/cups/ssl/server.crt ] || [ ! -f /etc/cups/ssl/server.key ]; then
-    echo "[INFO] Generating SSL certificates..."
-    if [ -f /generate-ssl.sh ]; then
-        /generate-ssl.sh
-        echo "[DEBUG] SSL certificate generation completed"
-    else
-        echo "[ERROR] /generate-ssl.sh missing"
-        exit 1
-    fi
+    log_info "Generating SSL certificates..."
+    /generate-ssl.sh
 else
-    echo "[DEBUG] SSL certificates already exist"
+    log_debug "SSL certificates already exist"
 fi
 
-# Validate CUPS config
-echo "[DEBUG] Validating CUPS configuration..."
+# Validate CUPS configuration
+log_debug "Validating CUPS configuration..."
 if ! cupsd -t 2>/tmp/cups-validate.err; then
-    echo "[ERROR] cupsd.conf invalid:"
+    log_error "cupsd.conf validation failed:"
     cat /tmp/cups-validate.err
     exit 1
-else
-    echo "[DEBUG] CUPS configuration validation passed"
 fi
 
-echo "[INFO] Starting CUPS daemon..."
-if command -v cupsd >/dev/null 2>&1; then
-    cupsd -f &
-    CUPSD_PID=$!
-    echo "[DEBUG] CUPS daemon started with PID: $CUPSD_PID"
-else
-    echo "[ERROR] cupsd not found. CUPS daemon cannot be started."
-    exit 1
-fi
+# Start CUPS daemon
+log_info "Starting CUPS daemon..."
+cupsd -f &
+CUPSD_PID=$!
+log_debug "CUPS daemon PID: $CUPSD_PID"
 
 # Wait for CUPS to be ready
-echo "[INFO] Waiting for CUPS to be ready..."
-timeout=10
-while [ $timeout -gt 0 ]; do
-    echo "[DEBUG] Checking CUPS readiness (timeout: $timeout)..."
+log_info "Waiting for CUPS to become ready..."
+for i in {10..1}; do
     if curl -k -s --max-time 3 https://localhost:631/ >/dev/null 2>&1; then
-        echo "[INFO] CUPS is ready and responding"
+        log_info "CUPS is ready!"
         break
-    else
-        echo "[DEBUG] CUPS not ready yet, waiting..."
     fi
+    log_debug "Waiting... ($i seconds left)"
     sleep 1
-    timeout=$((timeout-1))
+    if [ $i -eq 1 ]; then
+        log_error "CUPS failed to start within 10 seconds"
+        [ -f /var/log/cups/error_log ] && tail -20 /var/log/cups/error_log
+        exit 1
+    fi
 done
 
-if [ $timeout -eq 0 ]; then
-    echo "[ERROR] CUPS did not respond within 10 seconds"
-    if [ -f /var/log/cups/error_log ]; then
-        echo "[CUPS ERROR LOG]:"
-        tail -20 /var/log/cups/error_log
-    fi
-    exit 1
-fi
+# Start Avahi for AirPrint discovery
+log_info "Starting D-Bus and Avahi..."
+mkdir -p /var/run/dbus
+dbus-daemon --system --fork
+avahi-daemon --daemonize
 
-echo "[INFO] CUPS is running with host networking - no proxy needed"
+log_info "═══════════════════════════════════════════════"
+log_info "CUPS Print Server is running!"
+log_info "Web Interface: https://[homeassistant-ip]:631"
+log_info "Username: ${CUPS_USERNAME}"
+log_info "═══════════════════════════════════════════════"
 
-# Start supervisor for HA integration (only if bashio available)
-if command -v bashio >/dev/null 2>&1; then
-    echo "[INFO] Starting Home Assistant integration services..."
-    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/services.conf
-else
-    echo "[INFO] Running in standalone mode"
-    echo "[INFO] Starting D-Bus..."
-    mkdir -p /var/run/dbus
-    dbus-daemon --system --fork
-    echo "[INFO] Starting Avahi daemon..."
-    avahi-daemon --daemonize
-    echo "[INFO] CUPS Web Interface: https://localhost:631"
-    echo "[INFO] Username: print"
-    # Keep the container running
-    wait $CUPSD_PID
-fi
-
+# Keep container alive
+wait $CUPSD_PID

@@ -8,7 +8,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Minimal image that uses packaged CUPS. Keep only what's needed to run CUPS.
 
-# Install dependencies for libcups build
+# Install dependencies for libcups build + bashio
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
   avahi-daemon \
@@ -26,9 +26,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   net-tools \
   procps \
   socat \
+  jq \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Download and build libcups v3
+# Install bashio for Home Assistant config parsing
+RUN curl -L https://github.com/hassio-addons/bashio/archive/v0.16.2.tar.gz | tar xz \
+  && mv bashio-0.16.2/lib /usr/lib/bashio \
+  && ln -s /usr/lib/bashio/bashio /usr/bin/bashio \
+  && rm -rf bashio-0.16.2
+
+# Download and build cups v2.4.14 from source
 WORKDIR /tmp
 RUN curl -L -o cups-2.4.14-source.tar.gz https://github.com/OpenPrinting/cups/releases/download/v2.4.14/cups-2.4.14-source.tar.gz \
   && echo "660288020dd6f79caf799811c4c1a3207a48689899ac2093959d70a3bdcb7699  cups-2.4.14-source.tar.gz" | sha256sum -c - \
