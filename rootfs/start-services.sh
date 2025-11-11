@@ -16,8 +16,8 @@ echo "[INFO] Starting CUPS v2 Print Server"
 
 # Configuration handling
 if command -v bashio >/dev/null 2>&1; then
-    CUPS_USERNAME=$(bashio::config "cups_username" "print")
-    CUPS_PASSWORD=$(bashio::config "cups_password" "print")
+    CUPS_USERNAME=$(bashio::config "cupsusername" "print")
+    CUPS_PASSWORD=$(bashio::config "cupspassword" "print")
     echo "[INFO] Configuration loaded from Home Assistant"
 else
     CUPS_USERNAME="${CUPS_USERNAME:-print}"
