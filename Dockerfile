@@ -48,8 +48,16 @@ RUN curl -L -o cups-2.4.14-source.tar.gz https://github.com/OpenPrinting/cups/re
   && cd .. \
   && rm -rf cups-2.4.14 cups-2.4.14-source.tar.gz
 
-# Copy runtime files FIRST (before symlinks)
+# Create lp user and group for CUPS (non-root for security)
+RUN groupadd -r lp 2>/dev/null || true \
+  && useradd -r -g lp -d /var/spool/cups -s /usr/sbin/nologin lp 2>/dev/null || true
+
+# Copy runtime files
 COPY rootfs/ /
+
+# Create necessary directories and set ownership
+RUN mkdir -p /var/log/cups /var/cache/cups /var/spool/cups /var/run/cups /etc/cups/ssl \
+  && chown -R lp:lp /var/log/cups /var/cache/cups /var/spool/cups /var/run/cups /etc/cups/ssl
 
 # Create symlinks so CUPS uses /etc/cups/ as the single source of truth
 RUN mkdir -p /usr/etc/cups \
