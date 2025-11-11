@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## 1.3.1 - 2025-11-11
+### Fixed
+- Home Assistant add-on panel now correctly displays the dynamic URL and "Open Web UI" button for managing the CUPS instance
+- Resolved ERR_CONNECTION_REFUSED errors in Home Assistant by fixing config key mismatches and enabling direct host port access
+- Corrected bashio config loading to use proper keys (cupsusername, cupspassword) from add-on options
+
 ## 1.3.0 - 2025-11-10
 ### Added
 - Synced support metadata and configuration; requires Home Assistant Core & Supervisor 2025.11.1

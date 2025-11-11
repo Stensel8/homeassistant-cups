@@ -1,5 +1,5 @@
 name: CUPS Print Server
-version: 1.3.0
+version: 1.3.1
 slug: cups-server
 description: "Home Assistant add-on for CUPS (Unix Printing System) with secure HTTPS and AirPrint support."
 arch:
