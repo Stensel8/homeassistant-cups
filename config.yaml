@@ -14,7 +14,7 @@ supervisor: 2025.11.1
 init: false
 host_network: false
 ports:
-  631/tcp: null
+  631/tcp: 631
 ports_description:
   631/tcp: CUPS Web Interface (HTTPS)
 privileged:

@@ -1,4 +1,7 @@
-FROM debian:bookworm-slim
+# Base image for local development/testing
+# When built by Home Assistant Supervisor, build.yaml overrides this with:
+# ghcr.io/hassio-addons/debian-base:8.1.4 (per architecture)
+FROM ghcr.io/hassio-addons/debian-base:8.1.4
 
 ARG DEBIAN_FRONTEND=noninteractive
 
