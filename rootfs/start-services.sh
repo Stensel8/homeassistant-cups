@@ -48,6 +48,9 @@ echo ""
 log_info "Starting CUPS Print Server for Home Assistant"
 log_debug "Shell: $SHELL, User: $(whoami), PID: $$"
 
+# Port is fixed to 631 (CUPS standard)
+CUPS_PORT=631
+
 # Check if required commands exist
 log_debug "Checking required commands..."
 for cmd in curl groupadd useradd cupsd netstat; do
@@ -72,28 +75,29 @@ fi
 log_info "Loading configuration..."
 if command -v bashio >/dev/null 2>&1; then
     log_debug "✓ Bashio found"
-    # Wait for supervisor to be reachable (max 5 seconds)
-    for i in {1..5}; do
+    
+    # Wait longer for supervisor to be reachable (up to 15 seconds)
+    CONNECTED=false
+    for i in {1..15}; do
         if bashio::supervisor.ping 2>/dev/null; then
+            CONNECTED=true
             break
         fi
-        log_debug "Waiting for supervisor... (${i}/5)"
+        log_debug "Waiting for supervisor... (${i}/15)"
         sleep 1
     done
     
-    if bashio::supervisor.ping 2>/dev/null; then
-        log_info "Connected to Home Assistant Supervisor"
+    if [ "$CONNECTED" = true ]; then
+        log_info "✓ Connected to Home Assistant Supervisor"
         CUPS_USERNAME=$(bashio::config 'cupsusername' 2>/dev/null || echo "admin")
         CUPS_PASSWORD=$(bashio::config 'cupspassword' 2>/dev/null || echo "admin")
-        CUPS_PORT=$(bashio::config 'cupsport' 2>/dev/null || echo "631")
         SSL_ENABLED=$(bashio::config 'sslenabled' 2>/dev/null || echo "true")
         ALLOW_REMOTE_ADMIN=$(bashio::config 'allowremoteadmin' 2>/dev/null || echo "true")
-        log_info "Configuration loaded from HA - User: ${CUPS_USERNAME}, Port: ${CUPS_PORT}"
+        log_info "Configuration loaded from HA - User: ${CUPS_USERNAME}"
     else
-        log_warning "Bashio found but supervisor not reachable, using defaults"
+        log_warning "Supervisor not reachable after 15 seconds, using defaults"
         CUPS_USERNAME="${CUPS_USERNAME:-admin}"
         CUPS_PASSWORD="${CUPS_PASSWORD:-admin}"
-        CUPS_PORT="${CUPS_PORT:-631}"
         SSL_ENABLED="${SSL_ENABLED:-true}"
         ALLOW_REMOTE_ADMIN="${ALLOW_REMOTE_ADMIN:-true}"
     fi
@@ -101,12 +105,11 @@ else
     log_warning "Bashio not found - using environment/default values"
     CUPS_USERNAME="${CUPS_USERNAME:-admin}"
     CUPS_PASSWORD="${CUPS_PASSWORD:-admin}"
-    CUPS_PORT="${CUPS_PORT:-631}"
     SSL_ENABLED="${SSL_ENABLED:-true}"
     ALLOW_REMOTE_ADMIN="${ALLOW_REMOTE_ADMIN:-true}"
 fi
 
-log_debug "Config: User=$CUPS_USERNAME, Port=$CUPS_PORT, SSL=$SSL_ENABLED"
+log_debug "Config: User=$CUPS_USERNAME, Port=$CUPS_PORT (fixed), SSL=$SSL_ENABLED"
 
 # Setup directories
 log_info "Setting up CUPS directories..."
@@ -126,14 +129,14 @@ else
     log_debug "No persistent config found at /config/cups"
 fi
 
-# Update cupsd.conf with configured port
-log_info "Configuring CUPS to listen on port ${CUPS_PORT}..."
+# Update cupsd.conf with fixed port 631
+log_info "Configuring CUPS to listen on port 631..."
 if [ ! -f /etc/cups/cupsd.conf ]; then
     log_fatal "cupsd.conf not found! Check if COPY rootfs/ / worked in Dockerfile"
 fi
 
 log_debug "Updating Listen directive in cupsd.conf..."
-if sed -i "s/^Listen 0\.0\.0\.0:[0-9]\+/Listen 0.0.0.0:${CUPS_PORT}/" /etc/cups/cupsd.conf; then
+if sed -i "s/^Listen 0\.0\.0\.0:[0-9]\+/Listen 0.0.0.0:631/" /etc/cups/cupsd.conf; then
     log_debug "✓ Updated existing Listen directive"
 else
     log_warning "sed failed or no Listen directive found"
@@ -143,13 +146,11 @@ fi
 if ! grep -q "^Listen 0\.0\.0\.0:" /etc/cups/cupsd.conf; then
     log_warning "No Listen 0.0.0.0 found, adding it..."
     sed -i '/^Listen/d' /etc/cups/cupsd.conf
-    sed -i "1i Listen 0.0.0.0:${CUPS_PORT}" /etc/cups/cupsd.conf
+    sed -i "1i Listen 0.0.0.0:631" /etc/cups/cupsd.conf
     sed -i '2i Listen /var/run/cups/cups.sock' /etc/cups/cupsd.conf
 fi
 
-# ══════════════════════════════════════════════════════════
-# Important: Sync config to /usr/etc/cups if it exists
-# ══════════════════════════════════════════════════════════
+# Sync config to /usr/etc/cups if it exists
 if [ -d /usr/etc/cups ]; then
     log_debug "Syncing cupsd.conf to /usr/etc/cups (for compatibility)..."
     
@@ -159,13 +160,12 @@ if [ -d /usr/etc/cups ]; then
         cp -f /etc/cups/cupsd.conf /usr/etc/cups/cupsd.conf
     fi
     
-    # Also ensure Listen directive is correct in the actual file CUPS reads
-    sed -i "s/^Listen 127\.0\.0\.1:[0-9]\+/Listen 0.0.0.0:${CUPS_PORT}/" /usr/etc/cups/cupsd.conf 2>/dev/null || true
-    sed -i "s/^Listen localhost:[0-9]\+/Listen 0.0.0.0:${CUPS_PORT}/" /usr/etc/cups/cupsd.conf 2>/dev/null || true
+    # Ensure Listen directive is correct
+    sed -i "s/^Listen 127\.0\.0\.1:[0-9]\+/Listen 0.0.0.0:631/" /usr/etc/cups/cupsd.conf 2>/dev/null || true
+    sed -i "s/^Listen localhost:[0-9]\+/Listen 0.0.0.0:631/" /usr/etc/cups/cupsd.conf 2>/dev/null || true
     
     log_debug "✓ Config synced to /usr/etc/cups"
 fi
-# ══════════════════════════════════════════════════════════
 
 # Create or update CUPS user
 log_info "Setting up user: ${CUPS_USERNAME}"
@@ -227,7 +227,7 @@ log_info "✓ CUPS daemon started with PID: $CUPSD_PID"
 log_info "Waiting for CUPS to become ready..."
 READY=false
 for i in {10..1}; do
-    if curl -k -s --max-time 3 https://localhost:${CUPS_PORT}/ >/dev/null 2>&1; then
+    if curl -k -s --max-time 3 https://localhost:631/ >/dev/null 2>&1; then
         log_info "✓ CUPS is ready!"
         READY=true
         break
@@ -259,14 +259,14 @@ else
 fi
 
 log_info "Listening ports:"
-netstat -tuln 2>/dev/null | grep ${CUPS_PORT} || ss -tuln 2>/dev/null | grep ${CUPS_PORT} || log_warning "Could not check listening ports"
+netstat -tuln 2>/dev/null | grep 631 || ss -tuln 2>/dev/null | grep 631 || log_warning "Could not check listening ports"
 
 log_info "Testing local CUPS access:"
-curl -k -I https://localhost:${CUPS_PORT}/ 2>&1 | head -5 || log_warning "Local access test failed"
+curl -k -I https://localhost:631/ 2>&1 | head -5 || log_warning "Local access test failed"
 
 if [ -n "$CONTAINER_IP" ]; then
-    log_info "Testing external CUPS access (via ${CONTAINER_IP}:${CUPS_PORT}):"
-    curl -k -I https://$CONTAINER_IP:${CUPS_PORT}/ 2>&1 | head -5 || log_warning "External access test failed"
+    log_info "Testing external CUPS access (via ${CONTAINER_IP}:631):"
+    curl -k -I https://$CONTAINER_IP:631/ 2>&1 | head -5 || log_warning "External access test failed"
 fi
 
 # Start Avahi for AirPrint discovery
@@ -288,9 +288,9 @@ fi
 log_info "════════════════════════════════════════════════════════════"
 log_info "✓ CUPS Print Server is running!"
 log_info "════════════════════════════════════════════════════════════"
-log_info "Web Interface: https://[homeassistant-ip]:${CUPS_PORT}"
+log_info "Web Interface: https://[homeassistant-ip]:631"
 log_info "Username: ${CUPS_USERNAME}"
-log_info "Password: <configured by user>"
+log_info "Password: <configured>"
 log_info "════════════════════════════════════════════════════════════"
 
 # Keep container alive
