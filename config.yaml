@@ -1,5 +1,5 @@
 name: CUPS Print Server
-version: 1.3.2
+version: 1.3.1
 slug: cups-server
 description: "Home Assistant add-on for CUPS (Unix Printing System) with secure HTTPS and AirPrint support."
 arch:
@@ -14,7 +14,7 @@ supervisor: 2025.11.1
 init: false
 host_network: false
 ports:
-  631/tcp: 631
+  631/tcp: null
 ports_description:
   631/tcp: CUPS Web Interface (HTTPS)
 privileged:
@@ -25,13 +25,15 @@ devices:
 options:
   cupsusername: "admin"
   cupspassword: "admin"
+  cupsport: 631
   sslenabled: true
   allowremoteadmin: true
 schema:
   cupsusername: str
   cupspassword: password
+  cupsport: port
   sslenabled: bool
   allowremoteadmin: bool
 panel_icon: mdi:printer
 panel_title: CUPS Print Server
-webui: "https://[HOST]:631/"
+webui: "https://[HOST]:[PORT:631]/"
