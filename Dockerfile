@@ -74,12 +74,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /cups-install/usr /usr
 COPY --from=builder /cups-install/etc/cups /etc/cups
 
-# Install bashio (lightweight, no compilation needed)
-RUN curl -fsSL https://github.com/hassio-addons/bashio/archive/v0.16.2.tar.gz | tar xz \
-  && mv bashio-0.16.2/lib /usr/lib/bashio \
-  && ln -s /usr/lib/bashio/bashio /usr/bin/bashio \
-  && rm -rf bashio-0.16.2
-
 # Register CUPS libraries
 RUN echo -e "/usr/lib\n/usr/local/lib\n/usr/lib64" > /etc/ld.so.conf.d/cups.conf \
   && ldconfig
