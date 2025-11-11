@@ -32,10 +32,6 @@ schema:
   cupsport: port
   sslenabled: bool
   allowremoteadmin: bool
-ports:
-  "631/tcp": 631
-ports_description:
-  "631/tcp": "CUPS web interface (HTTPS)"
 # Expose a dynamic web UI URL so Home Assistant/Supervisor shows the real host URL
 # [HOST] will be replaced by the Supervisor with the actual host address when shown
 webui: "https://[HOST]:631"
