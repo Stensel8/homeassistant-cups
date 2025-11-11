@@ -36,7 +36,7 @@ log_fatal() {
 # Trap errors and show which line failed
 trap 'log_error "Script failed at line $LINENO with exit code $?"' ERR
 
-# Clear screen (suppress errors if TERM not set)
+# Try to clear screen (suppress errors if TERM not set)
 clear 2>/dev/null || true
 
 echo "════════════════════════════════════════════════════════════"
@@ -137,6 +137,26 @@ if ! grep -q "^Listen 0\.0\.0\.0:" /etc/cups/cupsd.conf; then
     sed -i "1i Listen 0.0.0.0:${CUPS_PORT}" /etc/cups/cupsd.conf
     sed -i '2i Listen /var/run/cups/cups.sock' /etc/cups/cupsd.conf
 fi
+
+# ══════════════════════════════════════════════════════════
+# Important: Sync config to /usr/etc/cups if it exists
+# ══════════════════════════════════════════════════════════
+if [ -d /usr/etc/cups ]; then
+    log_debug "Syncing cupsd.conf to /usr/etc/cups (for compatibility)..."
+    
+    # If symlink doesn't exist, force sync
+    if [ ! -L /usr/etc/cups/cupsd.conf ]; then
+        log_warning "/usr/etc/cups/cupsd.conf is not a symlink, forcing sync..."
+        cp -f /etc/cups/cupsd.conf /usr/etc/cups/cupsd.conf
+    fi
+    
+    # Also ensure Listen directive is correct in the actual file CUPS reads
+    sed -i "s/^Listen 127\.0\.0\.1:[0-9]\+/Listen 0.0.0.0:${CUPS_PORT}/" /usr/etc/cups/cupsd.conf 2>/dev/null || true
+    sed -i "s/^Listen localhost:[0-9]\+/Listen 0.0.0.0:${CUPS_PORT}/" /usr/etc/cups/cupsd.conf 2>/dev/null || true
+    
+    log_debug "✓ Config synced to /usr/etc/cups"
+fi
+# ══════════════════════════════════════════════════════════
 
 # Create or update CUPS user
 log_info "Setting up user: ${CUPS_USERNAME}"
@@ -261,7 +281,7 @@ log_info "✓ CUPS Print Server is running!"
 log_info "════════════════════════════════════════════════════════════"
 log_info "Web Interface: https://[homeassistant-ip]:${CUPS_PORT}"
 log_info "Username: ${CUPS_USERNAME}"
-log_info "Password: <configured>"
+log_info "Password: <configured by user>"
 log_info "════════════════════════════════════════════════════════════"
 
 # Keep container alive

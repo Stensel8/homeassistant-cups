@@ -40,7 +40,7 @@ RUN curl -L -o cups-2.4.14-source.tar.gz https://github.com/OpenPrinting/cups/re
   && echo "660288020dd6f79caf799811c4c1a3207a48689899ac2093959d70a3bdcb7699  cups-2.4.14-source.tar.gz" | sha256sum -c - \
   && tar xzf cups-2.4.14-source.tar.gz \
   && cd cups-2.4.14 \
-  && ./configure --prefix=/usr --disable-local-only --enable-shared --with-tls=openssl \
+  && ./configure --prefix=/usr --sysconfdir=/etc --disable-local-only --enable-shared --with-tls=openssl \
   && make -j$(nproc) \
   && make install \
   && echo -e "/usr/lib\n/usr/local/lib\n/usr/lib64" > /etc/ld.so.conf.d/cups.conf \
@@ -48,8 +48,13 @@ RUN curl -L -o cups-2.4.14-source.tar.gz https://github.com/OpenPrinting/cups/re
   && cd .. \
   && rm -rf cups-2.4.14 cups-2.4.14-source.tar.gz
 
-# Copy runtime files
+# Copy runtime files FIRST (before symlinks)
 COPY rootfs/ /
+
+# Create symlinks so CUPS uses /etc/cups/ as the single source of truth
+RUN mkdir -p /usr/etc/cups \
+  && ln -sf /etc/cups/cupsd.conf /usr/etc/cups/cupsd.conf \
+  && ln -sf /etc/cups/cups-files.conf /usr/etc/cups/cups-files.conf
 
 # Ensure scripts are executable
 RUN chmod +x /generate-ssl.sh /health-check.sh /start-services.sh
