@@ -19,6 +19,13 @@ log_error() {
     echo "[ERROR] $1"
 }
 
+# Clear screen and show banner
+clear
+echo "════════════════════════════════════════════════════════════"
+echo "   CUPS Print Server for Home Assistant - Starting...       "
+echo "════════════════════════════════════════════════════════════"
+echo ""
+
 log_info "Starting CUPS Print Server for Home Assistant"
 
 # Ensure lpadmin group exists
@@ -28,16 +35,25 @@ if ! getent group lpadmin >/dev/null; then
 fi
 
 # Read configuration from Home Assistant or use defaults
-if command -v bashio >/dev/null 2>&1 && bashio::supervisor.ping; then
-    log_info "Loading configuration from Home Assistant..."
-    CUPS_USERNAME=$(bashio::config 'cupsusername')
-    CUPS_PASSWORD=$(bashio::config 'cupspassword')
-    CUPS_PORT=$(bashio::config 'cupsport')
-    SSL_ENABLED=$(bashio::config 'sslenabled')
-    ALLOW_REMOTE_ADMIN=$(bashio::config 'allowremoteadmin')
-    log_info "Configuration loaded - Username: ${CUPS_USERNAME}, Port: ${CUPS_PORT}"
+if command -v bashio >/dev/null 2>&1; then
+    if bashio::supervisor.ping 2>/dev/null; then
+        log_info "Loading configuration from Home Assistant..."
+        CUPS_USERNAME=$(bashio::config 'cupsusername')
+        CUPS_PASSWORD=$(bashio::config 'cupspassword')
+        CUPS_PORT=$(bashio::config 'cupsport')
+        SSL_ENABLED=$(bashio::config 'sslenabled')
+        ALLOW_REMOTE_ADMIN=$(bashio::config 'allowremoteadmin')
+        log_info "Configuration loaded - Username: ${CUPS_USERNAME}, Port: ${CUPS_PORT}"
+    else
+        log_warning "Bashio found but not connected to supervisor, using defaults"
+        CUPS_USERNAME="${CUPS_USERNAME:-admin}"
+        CUPS_PASSWORD="${CUPS_PASSWORD:-admin}"
+        CUPS_PORT="${CUPS_PORT:-631}"
+        SSL_ENABLED="${SSL_ENABLED:-true}"
+        ALLOW_REMOTE_ADMIN="${ALLOW_REMOTE_ADMIN:-true}"
+    fi
 else
-    log_warning "Not running in Home Assistant, using environment defaults"
+    log_warning "Bashio not found, using environment defaults"
     CUPS_USERNAME="${CUPS_USERNAME:-admin}"
     CUPS_PASSWORD="${CUPS_PASSWORD:-admin}"
     CUPS_PORT="${CUPS_PORT:-631}"
@@ -58,6 +74,21 @@ if [ -d /config/cups ]; then
     cp -f /config/cups/* /etc/cups/ 2>/dev/null || true
 else
     log_debug "No persistent config found, using defaults"
+fi
+
+# Update cupsd.conf with configured port (DEZE SECTIE IS NIEUW!)
+log_info "Configuring CUPS to listen on port ${CUPS_PORT}..."
+if [ -f /etc/cups/cupsd.conf ]; then
+    # Replace any existing Listen 0.0.0.0:XXX with the configured port
+    sed -i "s/^Listen 0\.0\.0\.0:[0-9]\+/Listen 0.0.0.0:${CUPS_PORT}/" /etc/cups/cupsd.conf
+    
+    # If no Listen 0.0.0.0 exists, add it
+    if ! grep -q "^Listen 0\.0\.0\.0:" /etc/cups/cupsd.conf; then
+        log_warning "Adding Listen 0.0.0.0:${CUPS_PORT} to cupsd.conf"
+        sed -i '/^Listen/d' /etc/cups/cupsd.conf
+        sed -i "1i Listen 0.0.0.0:${CUPS_PORT}" /etc/cups/cupsd.conf
+        sed -i '2i Listen /var/run/cups/cups.sock' /etc/cups/cupsd.conf
+    fi
 fi
 
 # Create or update CUPS user
@@ -89,6 +120,10 @@ if ! cupsd -t 2>/tmp/cups-validate.err; then
     exit 1
 fi
 
+# Show what Listen directives are active
+log_info "Active Listen directives:"
+grep "^Listen" /etc/cups/cupsd.conf || log_warning "No Listen directives found!"
+
 # Start CUPS daemon
 log_info "Starting CUPS daemon..."
 cupsd -f &
@@ -98,7 +133,7 @@ log_debug "CUPS daemon PID: $CUPSD_PID"
 # Wait for CUPS to be ready
 log_info "Waiting for CUPS to become ready..."
 for i in {10..1}; do
-    if curl -k -s --max-time 3 https://localhost:631/ >/dev/null 2>&1; then
+    if curl -k -s --max-time 3 https://localhost:${CUPS_PORT}/ >/dev/null 2>&1; then
         log_info "CUPS is ready!"
         break
     fi
@@ -111,38 +146,43 @@ for i in {10..1}; do
     fi
 done
 
-# Network diagnostics (always run after CUPS starts)
-log_info "═══════════════════════════════════════════════"
+# Network diagnostics
+log_info "════════════════════════════════════════════════════════════"
 log_info "Network Diagnostics:"
-log_info "═══════════════════════════════════════════════"
+log_info "════════════════════════════════════════════════════════════"
 
-log_info "Container IP addresses:"
-ip addr show | grep "inet " || true
+if command -v ip >/dev/null 2>&1; then
+    log_info "Container IP addresses:"
+    ip addr show | grep "inet " || true
+    CONTAINER_IP=$(ip addr show eth0 2>/dev/null | grep "inet " | awk '{print $2}' | cut -d'/' -f1 || echo "")
+else
+    log_warning "ip command not found, skipping IP detection"
+    CONTAINER_IP=""
+fi
 
 log_info "Listening ports:"
-netstat -tuln | grep 631 || ss -tuln | grep 631 || true
+netstat -tuln | grep ${CUPS_PORT} || ss -tuln | grep ${CUPS_PORT} || true
 
 log_info "Testing local CUPS access:"
-curl -k -I https://localhost:631/ 2>&1 | head -5 || true
+curl -k -I https://localhost:${CUPS_PORT}/ 2>&1 | head -5 || true
 
-CONTAINER_IP=$(ip addr show eth0 2>/dev/null | grep "inet " | awk '{print $2}' | cut -d'/' -f1 || echo "unknown")
-if [ "$CONTAINER_IP" != "unknown" ]; then
+if [ -n "$CONTAINER_IP" ]; then
     log_info "Testing external CUPS access (via container IP: $CONTAINER_IP):"
-    curl -k -I https://$CONTAINER_IP:631/ 2>&1 | head -5 || true
+    curl -k -I https://$CONTAINER_IP:${CUPS_PORT}/ 2>&1 | head -5 || true
 fi
 
 # Start Avahi for AirPrint discovery
-log_info "═══════════════════════════════════════════════"
+log_info "════════════════════════════════════════════════════════════"
 log_info "Starting D-Bus and Avahi..."
 mkdir -p /var/run/dbus
 dbus-daemon --system --fork
 avahi-daemon --daemonize
 
-log_info "═══════════════════════════════════════════════"
+log_info "════════════════════════════════════════════════════════════"
 log_info "CUPS Print Server is running!"
-log_info "Web Interface: https://[homeassistant-ip]:631"
+log_info "Web Interface: https://[homeassistant-ip]:${CUPS_PORT}"
 log_info "Username: ${CUPS_USERNAME}"
-log_info "═══════════════════════════════════════════════"
+log_info "════════════════════════════════════════════════════════════"
 
 # Keep container alive
 wait $CUPSD_PID

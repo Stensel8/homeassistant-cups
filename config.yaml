@@ -11,10 +11,12 @@ startup: services
 boot: auto
 homeassistant: 2025.11.1
 supervisor: 2025.11.1
-operatingsystem: 16.3
-frontend: 20251105.0
 init: false
-host_network: true
+host_network: false
+ports:
+  631/tcp: null
+ports_description:
+  631/tcp: CUPS Web Interface (HTTPS)
 privileged:
   - SYS_ADMIN
 usb: true
@@ -29,8 +31,9 @@ options:
 schema:
   cupsusername: str
   cupspassword: password
-  cupsport: port
+  cupsport: port(1-65535)
   sslenabled: bool
   allowremoteadmin: bool
 panel_icon: mdi:printer
 panel_title: CUPS Print Server
+webui: "https://[HOST]:[PORT:631]/"

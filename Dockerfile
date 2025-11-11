@@ -6,9 +6,7 @@ LABEL maintainer="Sten Tijhuis"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Minimal image that uses packaged CUPS. Keep only what's needed to run CUPS.
-
-# Install dependencies for libcups build + bashio
+# Install dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
   avahi-daemon \
@@ -27,6 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   procps \
   socat \
   jq \
+  iproute2 \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install bashio for Home Assistant config parsing
@@ -35,7 +34,7 @@ RUN curl -L https://github.com/hassio-addons/bashio/archive/v0.16.2.tar.gz | tar
   && ln -s /usr/lib/bashio/bashio /usr/bin/bashio \
   && rm -rf bashio-0.16.2
 
-# Download and build cups v2.4.14 from source
+# Download and build CUPS
 WORKDIR /tmp
 RUN curl -L -o cups-2.4.14-source.tar.gz https://github.com/OpenPrinting/cups/releases/download/v2.4.14/cups-2.4.14-source.tar.gz \
   && echo "660288020dd6f79caf799811c4c1a3207a48689899ac2093959d70a3bdcb7699  cups-2.4.14-source.tar.gz" | sha256sum -c - \
@@ -52,10 +51,8 @@ RUN curl -L -o cups-2.4.14-source.tar.gz https://github.com/OpenPrinting/cups/re
 # Copy runtime files
 COPY rootfs/ /
 
-# Ensure scripts have LF endings and are executable
-RUN sed -i 's/\r$//' /generate-ssl.sh && sed -i '1s/^\xEF\xBB\xBF//' /generate-ssl.sh && chmod +x /generate-ssl.sh || true
-RUN sed -i 's/\r$//' /health-check.sh && sed -i '1s/^\xEF\xBB\xBF//' /health-check.sh && chmod +x /health-check.sh || true
-RUN sed -i 's/\r$//' /start-services.sh && sed -i '1s/^\xEF\xBB\xBF//' /start-services.sh && chmod +x /start-services.sh || true
+# Ensure scripts are executable
+RUN chmod +x /generate-ssl.sh /health-check.sh /start-services.sh
 
 EXPOSE 631
 
