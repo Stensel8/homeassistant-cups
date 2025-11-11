@@ -72,6 +72,15 @@ fi
 log_info "Loading configuration..."
 if command -v bashio >/dev/null 2>&1; then
     log_debug "✓ Bashio found"
+    # Wait for supervisor to be reachable (max 5 seconds)
+    for i in {1..5}; do
+        if bashio::supervisor.ping 2>/dev/null; then
+            break
+        fi
+        log_debug "Waiting for supervisor... (${i}/5)"
+        sleep 1
+    done
+    
     if bashio::supervisor.ping 2>/dev/null; then
         log_info "Connected to Home Assistant Supervisor"
         CUPS_USERNAME=$(bashio::config 'cupsusername' 2>/dev/null || echo "admin")
