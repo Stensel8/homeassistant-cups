@@ -111,7 +111,28 @@ for i in {10..1}; do
     fi
 done
 
+# Network diagnostics (always run after CUPS starts)
+log_info "═══════════════════════════════════════════════"
+log_info "Network Diagnostics:"
+log_info "═══════════════════════════════════════════════"
+
+log_info "Container IP addresses:"
+ip addr show | grep "inet " || true
+
+log_info "Listening ports:"
+netstat -tuln | grep 631 || ss -tuln | grep 631 || true
+
+log_info "Testing local CUPS access:"
+curl -k -I https://localhost:631/ 2>&1 | head -5 || true
+
+CONTAINER_IP=$(ip addr show eth0 2>/dev/null | grep "inet " | awk '{print $2}' | cut -d'/' -f1 || echo "unknown")
+if [ "$CONTAINER_IP" != "unknown" ]; then
+    log_info "Testing external CUPS access (via container IP: $CONTAINER_IP):"
+    curl -k -I https://$CONTAINER_IP:631/ 2>&1 | head -5 || true
+fi
+
 # Start Avahi for AirPrint discovery
+log_info "═══════════════════════════════════════════════"
 log_info "Starting D-Bus and Avahi..."
 mkdir -p /var/run/dbus
 dbus-daemon --system --fork
