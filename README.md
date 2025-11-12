@@ -19,7 +19,7 @@ This add-on runs a secure CUPS (Unix Printing System) server on port 631 (HTTPS 
 Change the admin username and password via the Home Assistant add-on GUI options.
 
 ## Access
-- CUPS Web Interface: https://localhost:631/
+- CUPS Web Interface: https://[HOST]:631/ (replace [HOST] with your host IP or hostname; Supervisor will show the correct URL in the add-on panel)
 - Username and password: Set in the add-on options
 
 ## Status Panel
