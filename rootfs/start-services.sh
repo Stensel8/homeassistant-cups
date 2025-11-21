@@ -41,7 +41,7 @@ clear 2>/dev/null || true
 
 echo "════════════════════════════════════════════════════════════"
 echo "   CUPS Print Server for Home Assistant - Starting...       "
-echo "   Version: 1.3.2                                           "
+echo "   Version: 1.3.5                                           "
 echo "════════════════════════════════════════════════════════════"
 echo ""
 
@@ -58,6 +58,15 @@ for cmd in curl groupadd useradd cupsd netstat; do
         log_fatal "Required command '$cmd' not found! Docker build may have failed."
     fi
     log_debug "✓ Found: $cmd"
+done
+
+# Ensure discovery tool dependencies are present (warn only)
+for cmd in avahi-browse avahi-resolve; do
+    if ! command -v $cmd >/dev/null 2>&1; then
+        log_warning "Optional discovery tool '$cmd' is not installed; discovery features may be limited or unavailable."
+    else
+        log_debug "✓ Found optional tool: $cmd"
+    fi
 done
 
 # Ensure lpadmin group exists
@@ -95,6 +104,8 @@ if command -v bashio >/dev/null 2>&1; then
         CUPS_PASSWORD=$(bashio::config 'cupspassword' 2>/dev/null || echo "admin")
         SSL_ENABLED=$(bashio::config 'sslenabled' 2>/dev/null || echo "true")
         ALLOW_REMOTE_ADMIN=$(bashio::config 'allowremoteadmin' 2>/dev/null || echo "true")
+        CUPS_DEBUG=$(bashio::config 'cupsdebug' 2>/dev/null || echo "${CUPS_DEBUG:-false}")
+        ENABLE_CUPS_BROWSED=$(bashio::config 'enable_cups_browsed' 2>/dev/null || echo "false")
         log_info "Configuration loaded from HA - User: ${CUPS_USERNAME}"
     else
         log_warning "Supervisor not reachable after 15 seconds, using defaults"
@@ -109,7 +120,12 @@ else
     CUPS_PASSWORD="${CUPS_PASSWORD:-admin}"
     SSL_ENABLED="${SSL_ENABLED:-true}"
     ALLOW_REMOTE_ADMIN="${ALLOW_REMOTE_ADMIN:-true}"
+    CUPS_DEBUG="${CUPS_DEBUG:-false}"
+    ENABLE_CUPS_BROWSED="false"
 fi
+
+# Write runtime environment selections for services started in `services.d`
+:# No add-ons env file required - keep runtime simple and rely on bashio/config
 
 log_debug "Config: User=$CUPS_USERNAME, Port=$CUPS_PORT (fixed), SSL=$SSL_ENABLED"
 
@@ -169,47 +185,15 @@ if [ -d /usr/etc/cups ]; then
     log_debug "✓ Config synced to /usr/etc/cups"
 fi
 
-# Fix CUPS ServerName for proper HTTPS redirects
-log_info "Configuring CUPS ServerName for proper HTTPS redirects..."
-
-# Try to detect the host IP via gateway
-HOST_IP=$(ip route | grep default | awk '{print $3}' 2>/dev/null)
 
 if [ -z "$HOST_IP" ]; then
     # Fallback: try to get from DNS or environment
     HOST_IP=$(getent hosts host.docker.internal 2>/dev/null | awk '{print $1}')
 fi
 
-if [ -z "$HOST_IP" ]; then
-    # Last resort: use common private network gateway
-    HOST_IP="192.168.0.1"
-    log_warning "Could not auto-detect host IP, using default: $HOST_IP"
-else
-    log_info "Detected host IP: $HOST_IP"
-fi
-
-# Update cupsd.conf with proper ServerName
-if grep -q "^ServerName" /etc/cups/cupsd.conf; then
-    sed -i "s/^ServerName .*/ServerName ${HOST_IP}/" /etc/cups/cupsd.conf
-else
-    # Add ServerName after Listen directives
-    sed -i "/^Listen/a ServerName ${HOST_IP}" /etc/cups/cupsd.conf
-fi
-
-# Also add ServerAlias for all possible access points
-if ! grep -q "^ServerAlias" /etc/cups/cupsd.conf; then
-    sed -i "/^ServerName/a ServerAlias *" /etc/cups/cupsd.conf
-fi
-
-# Force HTTPS-only by ensuring DefaultEncryption is Required
-if grep -q "^DefaultEncryption" /etc/cups/cupsd.conf; then
-    sed -i "s/^DefaultEncryption .*/DefaultEncryption Required/" /etc/cups/cupsd.conf
-else
-    echo "DefaultEncryption Required" >> /etc/cups/cupsd.conf
-fi
-
-log_debug "✓ ServerName set to: ${HOST_IP}"
-log_debug "✓ HTTPS-only mode enforced"
+# Note: Do not change ServerName or force HTTPS mode automatically —
+# keep the configuration minimal and let Home Assistant or the user manage
+# any overrides via `/config/cups` persistent config files mounted into the container.
 
 # Sync to /usr/etc/cups as well
 if [ -d /usr/etc/cups ] && [ ! -L /usr/etc/cups/cupsd.conf ]; then
@@ -260,6 +244,12 @@ if ! cupsd -t 2>/tmp/cups-validate.err; then
     log_fatal "Fix the configuration errors above"
 else
     log_debug "✓ CUPS configuration is valid"
+fi
+
+# If environment variable CUPS_DEBUG is set to true, set LogLevel to debug
+if [ "${CUPS_DEBUG:-false}" = "true" ]; then
+    log_info "CUPS debug logging enabled"
+    sed -i 's/^LogLevel .*/LogLevel debug/' /etc/cups/cupsd.conf || true
 fi
 
 # Show what Listen directives are active
@@ -332,6 +322,38 @@ if avahi-daemon --daemonize 2>/dev/null; then
     log_debug "✓ Avahi started"
 else
     log_warning "Avahi failed to start (non-fatal, AirPrint won't work)"
+fi
+
+# Quick check that avahi-browse can list services (non-fatal)
+if command -v avahi-browse >/dev/null 2>&1; then
+    if avahi-browse --parsable -r -t _ipp._tcp 2>/dev/null | head -n1 >/dev/null 2>&1; then
+        log_debug "✓ avahi-browse available and functional"
+    else
+        log_warning "avahi-browse installed but no _ipp._tcp services found or it cannot resolve yet"
+    fi
+else
+    log_debug "avahi-browse not installed; install avahi-utils for better discovery support"
+fi
+
+# Start the discovery UI if present and not already running
+if [ -f /opt/discovery-ui.sh ]; then
+    if ! pgrep -f 'discovery-ui.sh' >/dev/null 2>&1; then
+        log_info "Starting Discovery UI..."
+        nohup /opt/discovery-ui.sh >/var/log/discovery-ui.log 2>&1 &
+    else
+        log_debug "Discovery UI already running"
+    fi
+fi
+
+# Start cups-browsed if enabled
+if [ "${ENABLE_CUPS_BROWSED:-false}" = "true" ]; then
+    if command -v cups-browsed >/dev/null 2>&1; then
+        log_info "Starting cups-browsed (auto-creating queues from discovered printers)..."
+        # Start in foreground in background so it keeps running and logs to the console
+        /usr/sbin/cups-browsed -f >/var/log/cups/cups-browsed.log 2>&1 &
+    else
+        log_warning "cups-browsed is not available in the container; install cups-filters to enable it"
+    fi
 fi
 
 log_info "════════════════════════════════════════════════════════════"

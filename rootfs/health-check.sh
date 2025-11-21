@@ -38,5 +38,41 @@ else
     echo "[HEALTH] PASS: Avahi daemon is running"
 fi
 
+# Check if mdns resolution is working for .local hostnames (if avahi-utils is installed)
+if command -v avahi-resolve >/dev/null 2>&1; then
+    echo "[HEALTH] Checking mDNS resolution sample (avahi-resolve)"
+    # We won't assume a printer name, just verify that resolving localhost works
+    if avahi-resolve -n localhost 2>/dev/null | grep -q "127.0.0.1"; then
+        echo "[HEALTH] PASS: mDNS resolver functioning (localhost -> 127.0.0.1)"
+    else
+        echo "[HEALTH] WARN: mDNS resolver not returning 127.0.0.1 for localhost"
+    fi
+else
+    echo "[HEALTH] WARN: avahi-utils not installed; skipping mdns checks"
+fi
+
+# Check discovery tooling availability
+avail=true
+for cmd in avahi-browse avahi-resolve; do
+    if ! command -v $cmd >/dev/null 2>&1; then
+        echo "[HEALTH] WARN: optional discovery tool '$cmd' not installed"
+        avail=false
+    fi
+done
+if [ "$avail" = false ]; then
+    echo "[HEALTH] WARN: Some discovery capabilities may be missing; install avahi-utils"
+fi
+
 echo "[HEALTH] All services healthy"
 exit 0
+
+# Optional: Verify discovery API is alive (http://localhost:8080)
+if command -v curl >/dev/null 2>&1; then
+    if curl -sI http://localhost:8080/ | grep -q "200"; then
+        echo "[HEALTH] PASS: Discovery UI responding on port 8080"
+    else
+        echo "[HEALTH] WARN: Discovery UI did not return HTTP 200 (port 8080)"
+    fi
+else
+    echo "[HEALTH] WARN: curl not present, skipping Discovery UI check"
+fi

@@ -22,6 +22,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
   && rm -rf /var/lib/apt/lists/*
 
+# Enable mdns resolution for .local hostnames (nss-mdns config)
+RUN if [ -f /etc/nsswitch.conf ]; then \
+      if ! grep -q 'mdns4' /etc/nsswitch.conf; then \
+        sed -i 's/^hosts:\s*files/hosts: files mdns4_minimal [NOTFOUND=return]/' /etc/nsswitch.conf || true; \
+        sed -i 's/hosts:\s*files mdns4_minimal \[NOTFOUND=return\] \(dns\)/hosts: files mdns4_minimal [NOTFOUND=return] \1 mdns4/' /etc/nsswitch.conf || true; \
+      fi; \
+    fi
+
 # Download and verify CUPS source
 RUN curl -fsSL -o cups.tar.gz \
     https://github.com/OpenPrinting/cups/releases/download/v2.4.14/cups-2.4.14-source.tar.gz \
@@ -55,8 +63,11 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install ONLY runtime dependencies (no build tools!)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    avahi-daemon \
-    dbus \
+  avahi-daemon \
+  dbus \
+  avahi-utils \
+  libnss-mdns \
+  cups-filters \
     openssl \
     curl \
     ca-certificates \
@@ -66,9 +77,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     net-tools \
     procps \
     socat \
-    jq \
     iproute2 \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  && \
+  # Set up NSS MDNS and avahi resolved caching for .local hostnames
+  if [ -f /etc/nsswitch.conf ] ; then \
+       sed -i 's/^hosts:\s*files/hosts: files mdns4_minimal [NOTFOUND=return]/' /etc/nsswitch.conf || true; \
+       sed -i 's/hosts:\s*files mdns4_minimal \[NOTFOUND=return\] \(dns\)/hosts: files mdns4_minimal [NOTFOUND=return] \1 mdns4/' /etc/nsswitch.conf || true; \
+     fi
 
 # Copy ONLY the compiled CUPS binaries from builder stage (excluding /var/run to avoid symlink conflicts)
 COPY --from=builder /cups-install/usr /usr
@@ -92,7 +108,7 @@ RUN mkdir -p /var/log/cups /var/cache/cups /var/spool/cups /var/run/cups \
      /var/run/cups /etc/cups/ssl \
   && ln -sf /etc/cups/cupsd.conf /usr/etc/cups/cupsd.conf \
   && ln -sf /etc/cups/cups-files.conf /usr/etc/cups/cups-files.conf \
-  && for script in /generate-ssl.sh /health-check.sh /start-services.sh; do \
+  && for script in /generate-ssl.sh /health-check.sh /start-services.sh /opt/cups-autodiscover.sh /opt/discovery-ui.sh; do \
        sed -i 's/\r$//' "$script" 2>/dev/null || true; \
        sed -i '1s/^\xEF\xBB\xBF//' "$script" 2>/dev/null || true; \
        chmod +x "$script"; \
@@ -101,6 +117,7 @@ RUN mkdir -p /var/log/cups /var/cache/cups /var/spool/cups /var/run/cups \
   && find /etc/cont-init.d -type f -exec sh -c 'sed -i "s/\r$//" "$1" && chmod +x "$1"' _ {} \; 2>/dev/null || true
 
 EXPOSE 631
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD /health-check.sh || exit 1

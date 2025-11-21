@@ -1,14 +1,15 @@
 #!/bin/bash
-# CUPS Home Assistant Integration Service
+set -eu
+# CUPS HA Integration / Simple Monitor
 
 echo "[INFO] CUPS HA Integration service starting..."
 
-# Simple stub - this would normally integrate with Home Assistant
-# For now, just run a minimal service that stays alive
+# Minimal monitor to log CUPS status. If cupsd exits, log and exit with non-zero
+# so HA can restart the add-on, rather than restarting cupsd inside the container.
 while true; do
-    sleep 30
-    # Check CUPS daemon
     if ! pgrep -x cupsd >/dev/null 2>&1; then
-        echo "[WARNING] CUPS daemon not running"
+        echo "[ERROR] CUPS daemon not running; exiting to allow HA to restart the add-on"
+        exit 1
     fi
+    sleep 10
 done

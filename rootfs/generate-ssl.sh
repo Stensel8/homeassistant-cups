@@ -13,11 +13,17 @@ if [ ! -f "$SSL_DIR/server.key" ]; then
 fi
 
 # Generate certificate signing request
-openssl req -new -key "$SSL_DIR/server.key" -out "$SSL_DIR/server.csr" -subj "/C=NL/ST=Netherlands/L=Amsterdam/O=HomeAssistant/OU=CUPS/CN=localhost/emailAddress=admin@localhost"
+[ -z "${CERT_HOST_IP:-}" ] && CERT_HOST_IP=""
+CN_HOST="localhost"
+if [ -n "${CERT_HOST_IP}" ]; then
+    CN_HOST="${CERT_HOST_IP}"
+fi
+openssl req -new -key "$SSL_DIR/server.key" -out "$SSL_DIR/server.csr" -subj "/C=NL/ST=Netherlands/L=Amsterdam/O=HomeAssistant/OU=CUPS/CN=${CN_HOST}/emailAddress=admin@localhost"
 
 # Create a temporary extfile for subjectAltName and extensions
+[ -z "${CERT_HOST_IP:-}" ] && CERT_HOST_IP=""
 EXTFILE="/tmp/openssl-ext.cnf"
-cat > "$EXTFILE" <<'EOF'
+cat > "$EXTFILE" <<EOF
 [v3_req]
 basicConstraints = CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
@@ -28,7 +34,8 @@ DNS.1 = localhost
 DNS.2 = *.local
 DNS.3 = cups
 IP.1 = 127.0.0.1
-IP.2 = 0.0.0.0
+# Optional: Add container/host IP to SAN if provided (CERT_HOST_IP environment variable)
+$(if [ -n "${CERT_HOST_IP}" ]; then echo "IP.2 = ${CERT_HOST_IP}"; fi)
 EOF
 
 # Generate self-signed certificate (valid 10 years)

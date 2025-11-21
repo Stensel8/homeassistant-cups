@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here.
 
+## 1.3.5 - 2025-11-21
+### Added/Improved
+- Improved mDNS/Avahi discovery support; installed `libnss-mdns` and `avahi-utils` to enable `.local` resolution and discovery parsing.
+- Discovery-only mode: the add-on will now detect `_ipp._tcp` services and write metadata to `/var/cache/cups/discovered` but **will not** auto-add printers to CUPS by default.
+- Discovery-only mode: the add-on will now detect `_ipp._tcp` services and write metadata to `/var/cache/cups/discovered` but **will not** auto-add printers to CUPS by default.
+- Added a minimal Discovery UI (read-only) available at `http://[HOST]:8080/` that shows discovered printers and links to the CUPS Admin UI.
+- Clarified that the add-on no longer overwrites `ServerName` in `cupsd.conf`: keep configuration minimal and read from persisted config in `/config/cups` when available.
+- Discovery is read-only and the add-on does not auto-add printers. Administrators can review discovered metadata and add printers using the CUPS web UI.
+- Added a monitor service to automatically restart `cupsd` if it crashes unexpectedly.
+- Improved health checks and runtime warnings for optional discovery tools (avahi-browse, avahi-resolve).
+
+### Fixed
+- Fixed Avahi configuration that previously bound to a specific interface (eth0); `allow-interfaces` removed so discovery works across environments.
+- Various startup and configuration fixes to improve reliability and debugging (CUPS debug mode, better ServerName detection).
+
 ## 1.3.1 - 2025-11-11
 ### Fixed
 - Home Assistant add-on panel now correctly displays the dynamic URL and "Open Web UI" button for managing the CUPS instance
