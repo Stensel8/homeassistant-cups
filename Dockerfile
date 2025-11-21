@@ -2,7 +2,7 @@
 # ==============================================================================
 # Stage 1: Build Stage - Compile CUPS from source
 # ==============================================================================
-FROM ghcr.io/hassio-addons/debian-base:8.1.4 AS builder
+FROM ghcr.io/hassio-addons/debian-base:9.1.0 AS builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG TARGETARCH
@@ -53,7 +53,7 @@ RUN ./configure \
 # ==============================================================================
 # Stage 2: Runtime Stage - Minimal image with only runtime dependencies
 # ==============================================================================
-FROM ghcr.io/hassio-addons/debian-base:8.1.4
+FROM ghcr.io/hassio-addons/debian-base:9.1.0
 
 ARG DEBIAN_FRONTEND=noninteractive
 
