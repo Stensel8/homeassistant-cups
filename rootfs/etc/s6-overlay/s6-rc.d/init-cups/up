@@ -13,18 +13,16 @@ if [[ -f /usr/bin/bashio ]]; then
     ADMIN_USER=$(bashio::config 'admin_username')
     ADMIN_PASS=$(bashio::config 'admin_password')
     SSL_ENABLED=$(bashio::config 'ssl_enabled')
-    REMOTE_ADMIN=$(bashio::config 'remote_admin')
     LOG_LEVEL=$(bashio::config 'log_level')
 else
     info "Bashio not found, using defaults"
     ADMIN_USER="admin"
     ADMIN_PASS="admin"
     SSL_ENABLED="true"
-    REMOTE_ADMIN="true"
     LOG_LEVEL="info"
 fi
 
-info "Configuration loaded: user=$ADMIN_USER, ssl=$SSL_ENABLED, remote=$REMOTE_ADMIN"
+info "Configuration loaded: user=$ADMIN_USER, ssl=$SSL_ENABLED"
 
 # Create directories
 mkdir -p /var/log/cups /var/run/cups /var/cache/cups /var/spool/cups /etc/cups/ssl /run/cups /data/cups
@@ -48,7 +46,6 @@ info "Generating cupsd.conf..."
     "$ADMIN_USER" \
     "$ADMIN_PASS" \
     "$SSL_ENABLED" \
-    "$REMOTE_ADMIN" \
     "$LOG_LEVEL"
 
 # Generate SSL certificates

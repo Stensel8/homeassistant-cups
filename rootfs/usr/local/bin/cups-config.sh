@@ -5,12 +5,11 @@ set -e
 ADMIN_USER="${1:-admin}"
 ADMIN_PASS="${2:-admin}"
 SSL_ENABLED="${3:-true}"
-REMOTE_ADMIN="${4:-true}"
-LOG_LEVEL="${5:-info}"
+LOG_LEVEL="${4:-info}"
 
 info() { echo "[cups-config] $*"; }
 
-info "Generating cupsd.conf with user=$ADMIN_USER, ssl=$SSL_ENABLED, remote=$REMOTE_ADMIN, log=$LOG_LEVEL"
+info "Generating cupsd.conf with user=$ADMIN_USER, ssl=$SSL_ENABLED, log=$LOG_LEVEL"
 
 # Convert log level to CUPS format
 case "$LOG_LEVEL" in
@@ -22,11 +21,7 @@ case "$LOG_LEVEL" in
 esac
 
 # Determine access control
-if [[ "$REMOTE_ADMIN" == "true" ]]; then
-    ADMIN_ACCESS="Allow all"
-else
-    ADMIN_ACCESS="Allow 127.0.0.1"
-fi
+ADMIN_ACCESS="Allow 127.0.0.1"
 
 # Generate cupsd.conf
 cat > /etc/cups/cupsd.conf << EOF

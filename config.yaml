@@ -38,14 +38,12 @@ options:
   admin_username: "admin"
   admin_password: "admin"
   ssl_enabled: true
-  remote_admin: true
   log_level: "info"
   
 schema:
   admin_username: str
   admin_password: password
   ssl_enabled: bool
-  remote_admin: bool
   log_level: list(debug|info|warn|error)
 
 # Panel in Home Assistant UI
