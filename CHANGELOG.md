@@ -4,29 +4,22 @@ All notable changes to this project are documented here.
 
 ## 1.3.5 - 2025-11-21
 ### Added/Improved
-- Improved mDNS/Avahi discovery support; installed `libnss-mdns` and `avahi-utils` to enable `.local` resolution and discovery parsing.
-- Discovery-only mode: the add-on will now detect `_ipp._tcp` services and write metadata to `/var/cache/cups/discovered` but **will not** auto-add printers to CUPS by default.
-- Discovery-only mode: the add-on will now detect `_ipp._tcp` services and write metadata to `/var/cache/cups/discovered` but **will not** auto-add printers to CUPS by default.
-- Added a minimal Discovery UI (read-only) available at `http://[HOST]:8080/` that shows discovered printers and links to the CUPS Admin UI.
-- Clarified that the add-on no longer overwrites `ServerName` in `cupsd.conf`: keep configuration minimal and read from persisted config in `/config/cups` when available.
-- Discovery is read-only and the add-on does not auto-add printers. Administrators can review discovered metadata and add printers using the CUPS web UI.
-- Added a monitor service to automatically restart `cupsd` if it crashes unexpectedly.
-- Improved health checks and runtime warnings for optional discovery tools (avahi-browse, avahi-resolve).
+- Enhanced mDNS/Avahi discovery with `libnss-mdns` and `avahi-utils` for `.local` resolution.
+- Discovery-only mode: Detects `_ipp._tcp` services and writes metadata to `/var/cache/cups/discovered` without auto-adding printers.
+- Minimal Discovery UI at `http://[HOST]:8080/` for viewing discovered printers (read-only, default disabled).
+- Added monitor service to restart `cupsd` on crashes.
+- Improved health checks and warnings for discovery tools.
 
 ### Fixed
-- Fixed Avahi configuration that previously bound to a specific interface (eth0); `allow-interfaces` removed so discovery works across environments.
-- Various startup and configuration fixes to improve reliability and debugging (CUPS debug mode, better ServerName detection).
-- Fixed discovery bash syntax error causing repeated errors in logs
-- Added `public_url` option to set CUPS ServerName and fix HTTP->HTTPS redirects
-- Added `enable_discovery_ui` option (default: false); discovery UI no longer runs by default
-- Added job and printer monitors to log queue and job actions to the add-on logs
-- Applied user rename/lock behavior to apply credentials set via add-on config on restart
+- Removed Avahi interface binding for broader environment support.
+- Various startup fixes, including bash syntax errors, `public_url` option for ServerName, and credential application.
+- Added job/printer monitors for logging.
 
 ## 1.3.1 - 2025-11-11
 ### Fixed
-- Home Assistant add-on panel now correctly displays the dynamic URL and "Open Web UI" button for managing the CUPS instance
-- Resolved ERR_CONNECTION_REFUSED errors in Home Assistant by fixing config key mismatches and enabling direct host port access
-- Corrected bashio config loading to use proper keys (cupsusername, cupspassword) from add-on options
+- Corrected Home Assistant add-on panel URL and "Open Web UI" button.
+- Resolved connection errors by fixing config keys and enabling host port access.
+- Fixed bashio config loading for proper username/password keys.
 
 ## 1.3.0 - 2025-11-10
 ### Added

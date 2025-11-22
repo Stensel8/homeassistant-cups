@@ -1,7 +1,8 @@
 name: CUPS Print Server
-version: 1.3.5
+version: 2.0.0
 slug: cups-server
-description: "Home Assistant add-on for CUPS (Unix Printing System) with secure HTTPS and AirPrint support."
+description: "CUPS 2.0.0 print server for Home Assistant"
+url: https://github.com/Stensel8/homeassistant-cups
 arch:
   - aarch64
   - amd64
@@ -9,43 +10,48 @@ arch:
   - i386
 startup: services
 boot: auto
-homeassistant: 2025.11.1
-supervisor: 2025.11.1
 init: false
+homeassistant_api: true
+hassio_api: true
+hassio_role: default
+
+# Network configuration
 host_network: false
 ports:
   631/tcp: 631
-  8080/tcp: 8080
 ports_description:
-  631/tcp: CUPS Web Interface (HTTPS)
-  8080/tcp: Discovery Read-only Web UI
+  631/tcp: "CUPS Web Interface (HTTPS)"
+
+# Privileges for USB access
 privileged:
   - SYS_ADMIN
 usb: true
 devices:
   - /dev/bus/usb
+
+# Access to host dbus (for avahi/mDNS)
+# This is important for AirPrint discovery
+apparmor: false
+
+# Configuration options for users
 options:
-  cupsusername: "admin"
-  cupspassword: "admin"
-  cupsport: 631
-  sslenabled: true
-  allowremoteadmin: true
-  cupsdebug: false
-  enable_cups_browsed: false
-  enable_discovery_ui: false
-  public_url: ""
-  enable_monitors: true
+  admin_username: "admin"
+  admin_password: "admin"
+  ssl_enabled: true
+  remote_admin: true
+  log_level: "info"
+  
 schema:
-  cupsusername: str
-  cupspassword: password
-  cupsport: port
-  sslenabled: bool
-  allowremoteadmin: bool
-  cupsdebug: bool
-  enable_cups_browsed: bool
-  enable_discovery_ui: bool
-  public_url: str
-  enable_monitors: bool
+  admin_username: str
+  admin_password: password
+  ssl_enabled: bool
+  remote_admin: bool
+  log_level: list(debug|info|warn|error)
+
+# Panel in Home Assistant UI
 panel_icon: mdi:printer
 panel_title: CUPS Print Server
 webui: "https://[HOST]:[PORT:631]/"
+
+# Image configuration
+image: ghcr.io/stensel8/homeassistant-cups-{arch}

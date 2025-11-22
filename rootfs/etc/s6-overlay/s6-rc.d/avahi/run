@@ -1,0 +1,28 @@
+#!/command/with-contenv bash
+# shellcheck shell=bash
+
+info() { echo "[avahi] $*"; }
+
+info "Starting Avahi daemon for AirPrint discovery..."
+
+# Start dbus (required for avahi)
+if [[ ! -d /var/run/dbus ]]; then
+    mkdir -p /var/run/dbus
+fi
+
+if ! pgrep -x dbus-daemon >/dev/null; then
+    info "Starting D-Bus..."
+    dbus-daemon --system --fork
+    sleep 1
+fi
+
+# Wait until CUPS socket is available
+while [[ ! -S /var/run/cups/cups.sock ]]; do
+    info "Waiting for CUPS socket..."
+    sleep 2
+done
+
+info "CUPS is ready, starting Avahi..."
+
+# Start Avahi in foreground
+exec avahi-daemon --no-drop-root

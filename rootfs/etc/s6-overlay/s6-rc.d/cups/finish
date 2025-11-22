@@ -1,0 +1,14 @@
+#!/command/execlineb -S0
+
+# Log the exit
+foreground { s6-echo "[cups] CUPS daemon stopped, exit code: ${1}" }
+
+# If CUPS crashed (exit code != 0), wait 5 seconds before restart
+ifelse { s6-test ${1} -ne 0 }
+{
+  foreground { s6-echo "[cups] CUPS crashed, restarting in 5 seconds..." }
+  s6-sleep 5
+}
+
+# Otherwise, restart immediately
+s6-true

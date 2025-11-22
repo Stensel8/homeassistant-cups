@@ -1,0 +1,4 @@
+# This file is a dependency marker for the 'cups' service in the s6-overlay init system.
+# It specifies that the 'cups' service depends on the 'init-cups' service, ensuring 'init-cups' runs first.
+# Explanation: Empty file - ensures that init-cups runs first.
+undefined

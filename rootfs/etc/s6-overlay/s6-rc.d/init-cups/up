@@ -1,0 +1,72 @@
+#!/command/with-contenv bash
+# shellcheck shell=bash
+set -e
+
+# Logging
+info() { echo "[init-cups] $*"; }
+error() { echo "[init-cups] ERROR: $*" >&2; }
+
+info "Starting CUPS initialization..."
+
+# Load configuration from Home Assistant
+if [[ -f /usr/bin/bashio ]]; then
+    ADMIN_USER=$(bashio::config 'admin_username')
+    ADMIN_PASS=$(bashio::config 'admin_password')
+    SSL_ENABLED=$(bashio::config 'ssl_enabled')
+    REMOTE_ADMIN=$(bashio::config 'remote_admin')
+    LOG_LEVEL=$(bashio::config 'log_level')
+else
+    info "Bashio not found, using defaults"
+    ADMIN_USER="admin"
+    ADMIN_PASS="admin"
+    SSL_ENABLED="true"
+    REMOTE_ADMIN="true"
+    LOG_LEVEL="info"
+fi
+
+info "Configuration loaded: user=$ADMIN_USER, ssl=$SSL_ENABLED, remote=$REMOTE_ADMIN"
+
+# Create directories
+mkdir -p /var/log/cups /var/run/cups /var/cache/cups /var/spool/cups /etc/cups/ssl /run/cups /data/cups
+chown -R lp:lp /var/log/cups /var/run/cups /var/cache/cups /var/spool/cups /etc/cups/ssl /run/cups
+
+# Copy default config if /etc/cups is empty
+if [[ ! -f /etc/cups/cupsd.conf ]]; then
+    info "Copying default CUPS configuration..."
+    cp -r /etc/cups.default/* /etc/cups/
+fi
+
+# Restore persistent config from /data (if it exists)
+if [[ -d /data/cups/etc ]]; then
+    info "Restoring persistent configuration from /data/cups..."
+    cp -rf /data/cups/etc/* /etc/cups/ 2>/dev/null || true
+fi
+
+# Generate cupsd.conf via helper script
+info "Generating cupsd.conf..."
+/usr/local/bin/cups-config.sh \
+    "$ADMIN_USER" \
+    "$ADMIN_PASS" \
+    "$SSL_ENABLED" \
+    "$REMOTE_ADMIN" \
+    "$LOG_LEVEL"
+
+# Generate SSL certificates
+if [[ "$SSL_ENABLED" == "true" ]] && [[ ! -f /etc/cups/ssl/server.crt ]]; then
+    info "Generating SSL certificates..."
+    /usr/local/bin/generate-ssl.sh
+fi
+
+# Validate configuration
+info "Validating CUPS configuration..."
+if ! cupsd -t 2>/tmp/cupsd-test.log; then
+    error "CUPS configuration is invalid:"
+    cat /tmp/cupsd-test.log
+    exit 1
+fi
+
+# Backup config to /data for persistence
+mkdir -p /data/cups/etc
+cp -rf /etc/cups/* /data/cups/etc/ 2>/dev/null || true
+
+info "CUPS initialization completed successfully"

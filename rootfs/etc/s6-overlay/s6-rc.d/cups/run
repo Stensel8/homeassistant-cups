@@ -1,0 +1,17 @@
+#!/command/with-contenv bash
+# shellcheck shell=bash
+
+# Logging
+info() { echo "[cups] $*"; }
+error() { echo "[cups] ERROR: $*" >&2; }
+
+info "Starting CUPS daemon..."
+
+# Wait for socket directory to exist
+while [[ ! -d /var/run/cups ]]; do
+    info "Waiting for /var/run/cups..."
+    sleep 1
+done
+
+# Start CUPS in foreground
+exec cupsd -f
