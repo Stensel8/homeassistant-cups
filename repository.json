@@ -1,5 +1,5 @@
 {
-  "name": "CUPS printing server addon for use in HomeAssistant.",
+  "name": "CUPS printing",
   "url": "https://github.com/Stensel8/homeassistant-cups",
   "maintainer": "Sten Tijhuis"
 }
