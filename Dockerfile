@@ -7,7 +7,7 @@
 # ==============================================================================
 # Stage 1: Build CUPS from source
 # ==============================================================================
-FROM ghcr.io/hassio-addons/debian-base:8.1.4 AS builder
+FROM ghcr.io/hassio-addons/debian-base:9.1.0 AS builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG CUPS_VERSION=2.0.0
@@ -49,7 +49,7 @@ RUN ./configure \
 # ==============================================================================
 # Stage 2: Runtime image
 # ==============================================================================
-FROM ghcr.io/hassio-addons/debian-base:8.1.4
+FROM ghcr.io/hassio-addons/debian-base:9.1.0
 
 ARG DEBIAN_FRONTEND=noninteractive
 
