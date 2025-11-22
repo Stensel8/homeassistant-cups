@@ -10,7 +10,7 @@
 FROM ghcr.io/hassio-addons/debian-base:9.1.0 AS builder
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG CUPS_VERSION=2.0.0
+ARG CUPS_VERSION=2.4.14
 
 WORKDIR /build
 
@@ -55,8 +55,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 LABEL \
   io.hass.name="CUPS Print Server" \
-  io.hass.description="Minimal CUPS 2.0.0 print server" \
+  io.hass.description="Minimal CUPS print server" \
   io.hass.version="2.0.0" \
+  cups.version="2.4.14" \
   io.hass.type="addon" \
   io.hass.arch="aarch64|amd64|armv7|i386" \
   maintainer="Sten Tijhuis <https://github.com/Stensel8>"
