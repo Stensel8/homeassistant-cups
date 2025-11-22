@@ -16,6 +16,11 @@ All notable changes to this project are documented here.
 ### Fixed
 - Fixed Avahi configuration that previously bound to a specific interface (eth0); `allow-interfaces` removed so discovery works across environments.
 - Various startup and configuration fixes to improve reliability and debugging (CUPS debug mode, better ServerName detection).
+- Fixed discovery bash syntax error causing repeated errors in logs
+- Added `public_url` option to set CUPS ServerName and fix HTTP->HTTPS redirects
+- Added `enable_discovery_ui` option (default: false); discovery UI no longer runs by default
+- Added job and printer monitors to log queue and job actions to the add-on logs
+- Applied user rename/lock behavior to apply credentials set via add-on config on restart
 
 ## 1.3.1 - 2025-11-11
 ### Fixed

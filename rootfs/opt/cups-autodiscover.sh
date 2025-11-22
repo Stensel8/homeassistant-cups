@@ -13,13 +13,19 @@ sanitize_name(){
 }
 
 # Discovery-only script: this script only discovers printers and writes metadata.
-:{ No AUTOADD } # Discovery-only mode
+# Discovery-only mode: do not auto-add printers in CUPS; this script only records discovered devices.
 
 
 # We'll only discover and record printers, not add or remove them in CUPS.
 DISCOVERY_DIR="/var/cache/cups/discovered"
 mkdir -p "$DISCOVERY_DIR"
 chown lp:lp "$DISCOVERY_DIR" 2>/dev/null || true
+
+# Basic dependency check to allow the script to exit gracefully when avahi isn't present
+if ! command -v avahi-browse >/dev/null 2>&1; then
+    LOG "avahi-browse not installed - discovery disabled"
+    exit 0
+fi
 
 update_discovery(){
     local name="$1" address="$2" port="$3" rp="$4" host="$5" srvtype="$6" domain="$7"
@@ -35,6 +41,9 @@ update_discovery(){
     echo "service=$srvtype" >> "$DISCOVERY_DIR/$pname.txt.tmp" && \
     echo "domain=$domain" >> "$DISCOVERY_DIR/$pname.txt.tmp" && \
     mv "$DISCOVERY_DIR/$pname.txt.tmp" "$DISCOVERY_DIR/$pname.txt"
+    # Also write a lightweight JSON representation for integrations
+    printf '{"name":"%s","pname":"%s","host":"%s","address":"%s","port":%s,"resource":"%s","service":"%s","domain":"%s","updated":"%s"}\n' \
+        "$name" "$pname" "$host" "$address" "$port" "$rp" "$srvtype" "$domain" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$DISCOVERY_DIR/$pname.json" 2>/dev/null || true
     # Also refresh the aggregated index for faster UI consumption
     echo "Updated: $(date '+%F %T') - $name ($address:$port)" >> "$DISCOVERY_DIR/index.log" 2>/dev/null || true
     # Re-create consolidated index file
@@ -42,6 +51,22 @@ update_discovery(){
         [ -f "$f" ] || continue
         grep -E '^(name|address|port|resource)=' "$f" | paste -sd ',' -
     done) > "$DISCOVERY_DIR/discovered.txt" 2>/dev/null || true
+    # Build a JSON index of discovered printers
+    if ls "$DISCOVERY_DIR"/*.json >/dev/null 2>&1; then
+        echo "[" > "$DISCOVERY_DIR/discovered.json" 2>/dev/null || true
+        first=true
+        for jf in $DISCOVERY_DIR/*.json; do
+            [ -f "$jf" ] || continue
+            if [ "$first" = true ]; then
+                cat "$jf" >> "$DISCOVERY_DIR/discovered.json"
+                first=false
+            else
+                echo "," >> "$DISCOVERY_DIR/discovered.json"
+                cat "$jf" >> "$DISCOVERY_DIR/discovered.json"
+            fi
+        done
+        echo "]" >> "$DISCOVERY_DIR/discovered.json"
+    fi
 }
 
 # No auto-add/remove functions in discovery-only mode

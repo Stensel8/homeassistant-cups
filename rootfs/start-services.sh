@@ -6,8 +6,8 @@ set -o pipefail
 # Set TERM to prevent warnings
 export TERM=xterm-256color
 
-# Enable debug mode
-DEBUG=${DEBUG:-true}
+# Enable debug mode (set via add-on option `cupsdebug`, default: false)
+DEBUG=${DEBUG:-false}
 
 # Logging functions
 log_debug() {
@@ -87,32 +87,34 @@ if command -v bashio >/dev/null 2>&1; then
     BASHIO_VERSION=$(bashio --version 2>/dev/null | head -1 || echo "v0.16.2")
     log_info "✓ Bashio found (version: ${BASHIO_VERSION})"
     
-    # Wait longer for supervisor to be reachable (up to 15 seconds)
+    # Read config immediately via bashio helpers (if present) so changes from the add-on UI
+    # are applied on restart even when the Supervisor is not yet reachable.
+    CUPS_USERNAME=$(bashio::config 'cupsusername' 2>/dev/null || echo "admin")
+    CUPS_PASSWORD=$(bashio::config 'cupspassword' 2>/dev/null || echo "admin")
+    SSL_ENABLED=$(bashio::config 'sslenabled' 2>/dev/null || echo "true")
+    ALLOW_REMOTE_ADMIN=$(bashio::config 'allowremoteadmin' 2>/dev/null || echo "true")
+    CUPS_DEBUG=$(bashio::config 'cupsdebug' 2>/dev/null || echo "${CUPS_DEBUG:-false}")
+    if [ "${CUPS_DEBUG}" = "true" ]; then
+        DEBUG="true"
+    fi
+    ENABLE_CUPS_BROWSED=$(bashio::config 'enable_cups_browsed' 2>/dev/null || echo "false")
+    ENABLE_DISCOVERY_UI=$(bashio::config 'enable_discovery_ui' 2>/dev/null || echo "false")
+    ENABLE_MONITORS=$(bashio::config 'enable_monitors' 2>/dev/null || echo "true")
+    PUBLIC_URL=$(bashio::config 'public_url' 2>/dev/null || echo "")
+    log_info "Configuration loaded from HA - User: ${CUPS_USERNAME}"
+
+    # Wait a bit for Supervisor if it exists, but don't force a failure if unreachable.
     CONNECTED=false
-    for i in {1..15}; do
+    for i in {1..30}; do
         if bashio::supervisor.ping 2>/dev/null; then
             CONNECTED=true
             break
         fi
-        log_debug "Waiting for supervisor... (${i}/15)"
+        log_debug "Waiting for supervisor... (${i}/30)"
         sleep 1
     done
-    
-    if [ "$CONNECTED" = true ]; then
-        log_info "✓ Connected to Home Assistant Supervisor"
-        CUPS_USERNAME=$(bashio::config 'cupsusername' 2>/dev/null || echo "admin")
-        CUPS_PASSWORD=$(bashio::config 'cupspassword' 2>/dev/null || echo "admin")
-        SSL_ENABLED=$(bashio::config 'sslenabled' 2>/dev/null || echo "true")
-        ALLOW_REMOTE_ADMIN=$(bashio::config 'allowremoteadmin' 2>/dev/null || echo "true")
-        CUPS_DEBUG=$(bashio::config 'cupsdebug' 2>/dev/null || echo "${CUPS_DEBUG:-false}")
-        ENABLE_CUPS_BROWSED=$(bashio::config 'enable_cups_browsed' 2>/dev/null || echo "false")
-        log_info "Configuration loaded from HA - User: ${CUPS_USERNAME}"
-    else
-        log_warning "Supervisor not reachable after 15 seconds, using defaults"
-        CUPS_USERNAME="${CUPS_USERNAME:-admin}"
-        CUPS_PASSWORD="${CUPS_PASSWORD:-admin}"
-        SSL_ENABLED="${SSL_ENABLED:-true}"
-        ALLOW_REMOTE_ADMIN="${ALLOW_REMOTE_ADMIN:-true}"
+    if [ "$CONNECTED" = false ]; then
+        log_warning "Supervisor not reachable after 30 seconds; using config read from bashio (if available)"
     fi
 else
     log_warning "Bashio not found - using environment/default values"
@@ -122,10 +124,13 @@ else
     ALLOW_REMOTE_ADMIN="${ALLOW_REMOTE_ADMIN:-true}"
     CUPS_DEBUG="${CUPS_DEBUG:-false}"
     ENABLE_CUPS_BROWSED="false"
+    ENABLE_DISCOVERY_UI="false"
+    ENABLE_MONITORS="true"
+    PUBLIC_URL=""
 fi
 
 # Write runtime environment selections for services started in `services.d`
-:# No add-ons env file required - keep runtime simple and rely on bashio/config
+# No add-ons env file required - keep runtime simple and rely on bashio/config
 
 log_debug "Config: User=$CUPS_USERNAME, Port=$CUPS_PORT (fixed), SSL=$SSL_ENABLED"
 
@@ -187,9 +192,19 @@ fi
 
 
 if [ -z "$HOST_IP" ]; then
-    # Fallback: try to get from DNS or environment
-    HOST_IP=$(getent hosts host.docker.internal 2>/dev/null | awk '{print $1}')
+    # Try to derive a sensible public host value. Prefer explicit public_url when set,
+    # otherwise try to find 'host.docker.internal' or leave empty.
+    if [ -n "${PUBLIC_URL:-}" ]; then
+        HOST_IP=$(echo "$PUBLIC_URL" | sed -E 's@https?://([^/:]+).*@\1@')
+        log_debug "Derived HOST_IP from public_url: $HOST_IP"
+    else
+        HOST_IP=$(getent hosts host.docker.internal 2>/dev/null | awk '{print $1}')
+        log_debug "Derived HOST_IP from host.docker.internal: $HOST_IP"
+    fi
 fi
+
+# If HOST_IP still unknown, prefer the container interface address discovered earlier
+# The HOST_IP fallback will be applied after network detection (where CONTAINER_IP is set)
 
 # Note: Do not change ServerName or force HTTPS mode automatically —
 # keep the configuration minimal and let Home Assistant or the user manage
@@ -200,28 +215,65 @@ if [ -d /usr/etc/cups ] && [ ! -L /usr/etc/cups/cupsd.conf ]; then
     cp -f /etc/cups/cupsd.conf /usr/etc/cups/cupsd.conf
 fi
 
-# Create or update CUPS user
-log_info "Setting up user: ${CUPS_USERNAME}"
-if ! id "$CUPS_USERNAME" >/dev/null 2>&1; then
-    log_debug "User does not exist, creating..."
-    if useradd --groups=lpadmin --create-home --shell=/bin/bash "$CUPS_USERNAME" 2>/dev/null; then
-        log_info "✓ Created user: ${CUPS_USERNAME}"
-    else
-        log_fatal "Failed to create user: ${CUPS_USERNAME}"
-    fi
-else
-    log_debug "✓ User already exists: ${CUPS_USERNAME}"
+# If configured, set explicit ServerName in cupsd.conf to support correct redirects
+if [ -n "${PUBLIC_URL:-}" ]; then
+    PUBLIC_HOST=$(echo "$PUBLIC_URL" | sed -E 's@https?://([^/:]+).*@\1@')
+    log_info "Setting CUPS ServerName to: $PUBLIC_HOST"
+    sed -i "s/^ServerName .*/ServerName $PUBLIC_HOST/" /etc/cups/cupsd.conf || true
+    sed -i "s/^ServerAlias .*/ServerAlias $PUBLIC_HOST/" /etc/cups/cupsd.conf || true
 fi
 
-log_debug "Setting password for user..."
-if echo "$CUPS_USERNAME:$CUPS_PASSWORD" | chpasswd 2>/dev/null; then
-    log_debug "✓ Password set successfully"
+# Create or update CUPS user
+CURRENT_USER_FILE="/var/cache/cups/current-username"
+PREVIOUS_USER=""
+if [ -f "$CURRENT_USER_FILE" ]; then
+    PREVIOUS_USER=$(cat "$CURRENT_USER_FILE" 2>/dev/null || echo "")
+fi
+
+log_info "Setting up user: ${CUPS_USERNAME}"
+if [ "${CUPS_USERNAME}" != "${PREVIOUS_USER}" ]; then
+    log_info "Detected CUPS username change: ${PREVIOUS_USER:-<none>} -> ${CUPS_USERNAME}"
+    if id "$CUPS_USERNAME" >/dev/null 2>&1; then
+        log_debug "User $CUPS_USERNAME exists; ensuring group membership and applying password"
+    else
+        log_debug "Creating new user $CUPS_USERNAME"
+        if useradd --groups=lpadmin --create-home --shell=/bin/bash "$CUPS_USERNAME" 2>/dev/null; then
+            log_info "✓ Created user: ${CUPS_USERNAME}"
+        else
+            log_fatal "Failed to create user: ${CUPS_USERNAME}"
+        fi
+    fi
+    # Lock the previous configured user (if different) to avoid surprise logins
+    if [ -n "$PREVIOUS_USER" ] && [ "$PREVIOUS_USER" != "$CUPS_USERNAME" ]; then
+        if id "$PREVIOUS_USER" >/dev/null 2>&1; then
+            log_info "Locking previous username: $PREVIOUS_USER"
+            usermod -L "$PREVIOUS_USER" 2>/dev/null || log_warning "Unable to lock user $PREVIOUS_USER"
+        fi
+    fi
+    # Persist chosen username for next run
+    mkdir -p "$(dirname "$CURRENT_USER_FILE")" 2>/dev/null || true
+    echo "$CUPS_USERNAME" > "$CURRENT_USER_FILE" 2>/dev/null || true
 else
-    log_error "Failed to set password (non-fatal)"
+    log_debug "CUPS username unchanged: $CUPS_USERNAME"
+    if ! id "$CUPS_USERNAME" >/dev/null 2>&1; then
+        log_info "CUPS username '$CUPS_USERNAME' missing; creating it"
+        useradd --groups=lpadmin --create-home --shell=/bin/bash "$CUPS_USERNAME" 2>/dev/null || log_fatal "Failed to create missing user: $CUPS_USERNAME"
+    fi
+fi
+
+log_debug "Setting password for user '$CUPS_USERNAME'..."
+if echo "$CUPS_USERNAME:$CUPS_PASSWORD" | chpasswd 2>/dev/null; then
+    log_debug "✓ Password set successfully for $CUPS_USERNAME"
+else
+    log_error "Failed to set password for $CUPS_USERNAME (non-fatal)"
 fi
 
 # Set config permissions
 chmod 644 /etc/cups/cupsd.conf 2>/dev/null || log_warning "Could not set cupsd.conf permissions"
+
+# Debug: show current lpadmin members for visibility
+LPADMINS=$(getent group lpadmin 2>/dev/null | awk -F: '{print $4}') || LPADMINS=""
+log_debug "Current lpadmin members: ${LPADMINS:-<none>}"
 
 # Generate SSL certificates if needed
 if [ ! -f /etc/cups/ssl/server.crt ] || [ ! -f /etc/cups/ssl/server.key ]; then
@@ -244,6 +296,13 @@ if ! cupsd -t 2>/tmp/cups-validate.err; then
     log_fatal "Fix the configuration errors above"
 else
     log_debug "✓ CUPS configuration is valid"
+fi
+
+# If remote admin has been disabled via config, lock down the admin locations to localhost only
+if [ "${ALLOW_REMOTE_ADMIN:-true}" = "false" ]; then
+    log_info "Remote admin disabled: restricting admin pages to localhost"
+    sed -i '/<Location \/admin>/,/<\/Location>/ s/Allow all/Allow From 127.0.0.1/' /etc/cups/cupsd.conf || true
+    sed -i '/<Location \/admin\/conf>/,/<\/Location>/ s/Allow all/Allow From 127.0.0.1/' /etc/cups/cupsd.conf || true
 fi
 
 # If environment variable CUPS_DEBUG is set to true, set LogLevel to debug
@@ -297,6 +356,12 @@ else
     CONTAINER_IP=""
 fi
 
+# If HOST_IP still unknown, prefer the container interface address discovered earlier
+if [ -z "$HOST_IP" ] && [ -n "$CONTAINER_IP" ]; then
+    HOST_IP="$CONTAINER_IP"
+    log_debug "Using container IP as HOST_IP: $HOST_IP"
+fi
+
 log_info "Listening ports:"
 netstat -tuln 2>/dev/null | grep 631 || ss -tuln 2>/dev/null | grep 631 || log_warning "Could not check listening ports"
 
@@ -306,6 +371,27 @@ curl -k -I https://localhost:631/ 2>&1 | head -5 || log_warning "Local access te
 if [ -n "$CONTAINER_IP" ]; then
     log_info "Testing external CUPS access (via ${CONTAINER_IP}:631):"
     curl -k -I https://$CONTAINER_IP:631/ 2>&1 | head -5 || log_warning "External access test failed"
+fi
+
+# Start job and printer monitors (lightweight) to log jobs and printer changes.
+if [ "${ENABLE_MONITORS:-true}" = "true" ] && [ -f /opt/cups-job-monitor.sh ]; then
+    chmod +x /opt/cups-job-monitor.sh 2>/dev/null || true
+    if ! pgrep -f 'cups-job-monitor.sh' >/dev/null 2>&1; then
+        log_info "Starting job monitor..."
+        nohup /opt/cups-job-monitor.sh >/var/log/cups/job-monitor.log 2>&1 &
+    else
+        log_debug "Job monitor already running"
+    fi
+fi
+
+if [ "${ENABLE_MONITORS:-true}" = "true" ] && [ -f /opt/cups-printer-monitor.sh ]; then
+    chmod +x /opt/cups-printer-monitor.sh 2>/dev/null || true
+    if ! pgrep -f 'cups-printer-monitor.sh' >/dev/null 2>&1; then
+        log_info "Starting printer monitor..."
+        nohup /opt/cups-printer-monitor.sh >/var/log/cups/printer-monitor.log 2>&1 &
+    else
+        log_debug "Printer monitor already running"
+    fi
 fi
 
 # Start Avahi for AirPrint discovery
@@ -335,14 +421,15 @@ else
     log_debug "avahi-browse not installed; install avahi-utils for better discovery support"
 fi
 
-# Start the discovery UI if present and not already running
-if [ -f /opt/discovery-ui.sh ]; then
-    if ! pgrep -f 'discovery-ui.sh' >/dev/null 2>&1; then
-        log_info "Starting Discovery UI..."
-        nohup /opt/discovery-ui.sh >/var/log/discovery-ui.log 2>&1 &
-    else
-        log_debug "Discovery UI already running"
-    fi
+# Start the discovery UI if explicitly enabled and present
+DISCOVERY_CONTROL_FILE="/run/cups/enable_discovery_ui"
+if [ "${ENABLE_DISCOVERY_UI:-false}" = "true" ] && [ -f /opt/discovery-ui.sh ]; then
+    mkdir -p $(dirname "$DISCOVERY_CONTROL_FILE") 2>/dev/null || true
+    touch "$DISCOVERY_CONTROL_FILE"
+    log_info "Discovery UI enabled; letting service manager start discovery-ui (control file: $DISCOVERY_CONTROL_FILE)"
+else
+    log_debug "Discovery UI is disabled by addon configuration"
+    rm -f "$DISCOVERY_CONTROL_FILE" 2>/dev/null || true
 fi
 
 # Start cups-browsed if enabled
@@ -359,7 +446,15 @@ fi
 log_info "════════════════════════════════════════════════════════════"
 log_info "✓ CUPS Print Server is running!"
 log_info "════════════════════════════════════════════════════════════"
-log_info "Web Interface: https://[homeassistant-ip]:631"
+if [ -n "${PUBLIC_URL}" ]; then
+    log_info "Web Interface: ${PUBLIC_URL}"
+else
+    if [ -n "${CONTAINER_IP}" ]; then
+        log_info "Web Interface: https://${CONTAINER_IP}:${CUPS_PORT}"
+    else
+        log_info "Web Interface: https://[homeassistant-ip]:${CUPS_PORT}"    
+    fi
+fi
 log_info "Username: ${CUPS_USERNAME}"
 log_info "Password: <configured>"
 log_info "════════════════════════════════════════════════════════════"

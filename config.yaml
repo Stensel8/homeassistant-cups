@@ -32,6 +32,9 @@ options:
   allowremoteadmin: true
   cupsdebug: false
   enable_cups_browsed: false
+  enable_discovery_ui: false
+  public_url: ""
+  enable_monitors: true
 schema:
   cupsusername: str
   cupspassword: password
@@ -40,6 +43,9 @@ schema:
   allowremoteadmin: bool
   cupsdebug: bool
   enable_cups_browsed: bool
+  enable_discovery_ui: bool
+  public_url: str
+  enable_monitors: bool
 panel_icon: mdi:printer
 panel_title: CUPS Print Server
 webui: "https://[HOST]:[PORT:631]/"

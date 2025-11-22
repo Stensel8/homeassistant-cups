@@ -85,6 +85,23 @@ To manually add a discovered printer in the CUPS web UI:
 ## Configuration
 Change the admin username and password via the Home Assistant add-on GUI options.
 
+### New Options
+- `enable_discovery_ui` (bool, default: false): When true, starts the optional lightweight discovery web UI on port 8080.
+- `public_url` (string, default: ""): If set, the add-on will use this public URL for generated links and to set CUPS `ServerName` so redirects use the correct hostname or IP instead of the container IP.
+ - `enable_monitors` (bool, default: true): When true, starts lightweight job and printer monitors that log job add/remove events and printer additions/removals to the add-on logs (/var/log/cups/*). This is enabled by default to help with debugging and visibility.
+
+### Applying Changes
+Changes made in the add-on config are applied on restart of the add-on. The add-on will:
+- Create/rename the configured system user (`cupsusername`) if necessary
+- Set the configured password (`cupspassword`) at startup
+- Lock the previously configured user (to avoid leaving a default admin account open)
+
+To apply changes, go to the Home Assistant add-on page, change options and click `Restart` (no hot-reload needed). Check the add-on logs for messages like:
+- `Detected CUPS username change: admin -> newuser`
+- `Password set successfully for newuser`
+
+If you don't see these logs, check the add-on logs for further errors; the add-on will exit with an error code on fatal failures and Supervisor can restart it automatically.
+
 ## Access
 - CUPS Web Interface: https://[HOST]:631/ (replace [HOST] with your host IP or hostname; Supervisor will show the correct URL in the add-on panel)
  - CUPS Web Interface: https://[HOST]:631/ (replace [HOST] with your host IP or hostname; Supervisor will show the correct URL in the add-on panel)
