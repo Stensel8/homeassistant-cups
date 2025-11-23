@@ -5,6 +5,7 @@ All notable changes to this project are documented here.
 ## 2.0.0 - Work in Progress
 ### Added/Improved
 - Deeper integration with Home Assistant, addressing past bugs with the S6 init system.
+- Corrected some parsing issues. Configs now load properly without errors.
 - Active rework and restructuring of the project to ensure compatibility and stability with S6.
 
 ## 1.3.5 - 2025-11-21

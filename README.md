@@ -1,5 +1,7 @@
 # CUPS Print Server – Home Assistant Add-on
 
+[![Build and push multi-arch image](https://github.com/Stensel8/homeassistant-cups/actions/workflows/build-and-push.yml/badge.svg)](https://github.com/Stensel8/homeassistant-cups/actions/workflows/build-and-push.yml)
+
 [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fstensel8%2Fhomeassistant-cups)
 
 Run a CUPS 2.4.14 print server in Home Assistant with full web UI and AirPrint support.
@@ -39,7 +41,8 @@ Enable AirPrint for automatic printer discovery on Apple devices. Avahi handles 
 
 **GitHub Actions:**
 
-The workflow automatically builds and pushes images on tag push (e.g., `v2.0.0`) or manual trigger.
+The workflow automatically builds and pushes images on tag push (e.g., `2.0.0`) or manual trigger.
+The image publishes both the prefixed `v` tag and the plain numeric tag so consumers can use either form (for example Home Assistant add-ons that reference `2.0.0`).
 
 Required secret: `DOCKERHUB_TOKEN` (Docker Hub Personal Access Token)
 - Go to Settings → Secrets and variables → Actions → New repository secret

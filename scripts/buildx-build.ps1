@@ -17,6 +17,9 @@ if (-not $Tag) {
     }
 }
 
+# Ensure we don't include a leading 'v' in the tag (drop it entirely)
+$Tag = $Tag -replace '^v',''
+
 $fullTag = "$($Image):$($Tag)"
 
 Write-Host "Building multi-arch image: $fullTag" -ForegroundColor Cyan
