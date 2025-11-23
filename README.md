@@ -30,19 +30,12 @@ Run a CUPS 2.4.14 print server in Home Assistant with full web UI and AirPrint s
 
 Enable AirPrint for automatic printer discovery on Apple devices. Avahi handles mDNS/Bonjour inside the container.
 
-
-## Troubleshooting
-
-- **CUPS won't start?** Check Supervisor logs
-- Accept the self-signed SSL certificate in your browser
-
 ## Building Multi-Arch Images
 
 **PowerShell:**
 ```pwsh
 ./scripts/buildx-build.ps1 -Push
 ```
-
 
 **GitHub Actions:**
 
@@ -55,8 +48,6 @@ Required secret: `DOCKERHUB_TOKEN` (Docker Hub Personal Access Token)
 
 ## Version Management
 
-The version is stored in the top-level `VERSION` file. Build scripts read from this file automatically.
+The version is stored in the top-level [`VERSION`](./VERSION) file. 
 
 ---
-
-**Ready to print!**
