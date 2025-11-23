@@ -33,14 +33,6 @@ jobs:
           username: stensel8
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Prepare plain tag (strip leading 'v' if present)
-        id: prep
-        run: |
-          REF_NAME="${{ github.ref_name }}"
-          # remove leading 'v' if present; if not present, leave as-is
-          PLAIN_TAG="${REF_NAME#v}"
-          echo "plain=${PLAIN_TAG}" >> $GITHUB_OUTPUT
-
       - name: Build and push multi-arch image
         uses: docker/build-push-action@v6
         with:
@@ -48,5 +40,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            stensel8/homeassistant-cups:${{ steps.prep.outputs.plain }}
+            stensel8/homeassistant-cups:${{ github.ref_name }}
             stensel8/homeassistant-cups:latest

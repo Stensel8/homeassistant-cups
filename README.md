@@ -42,7 +42,7 @@ Enable AirPrint for automatic printer discovery on Apple devices. Avahi handles 
 **GitHub Actions:**
 
 The workflow automatically builds and pushes images on tag push (e.g., `2.0.0`) or manual trigger.
-The image publishes both the prefixed `v` tag and the plain numeric tag so consumers can use either form (for example Home Assistant add-ons that reference `2.0.0`).
+
 
 Required secret: `DOCKERHUB_TOKEN` (Docker Hub Personal Access Token)
 - Go to Settings → Secrets and variables → Actions → New repository secret
