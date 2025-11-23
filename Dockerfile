@@ -50,17 +50,19 @@ RUN ./configure \
 # Stage 2: Runtime image
 # ==============================================================================
 FROM ghcr.io/hassio-addons/debian-base:9.1.0
-
 ARG DEBIAN_FRONTEND=noninteractive
+ARG BUILD_ARCH
+ARG BUILD_VERSION
+ARG CUPS_VERSION
 
 LABEL \
   io.hass.name="CUPS Print Server" \
   io.hass.description="Minimal CUPS print server" \
-  io.hass.version="2.0.0" \
-  cups.version="2.4.14" \
+  io.hass.version="${BUILD_VERSION}" \
+  cups.version="${CUPS_VERSION}" \
   io.hass.type="addon" \
-  io.hass.arch="aarch64|amd64|armv7|i386" \
-  maintainer="Sten Tijhuis <https://github.com/stensel8>"
+  io.hass.arch="${BUILD_ARCH}" \
+  maintainer="stensel8 <https://github.com/stensel8>"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 

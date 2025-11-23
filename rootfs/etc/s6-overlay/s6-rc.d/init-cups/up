@@ -1,15 +1,15 @@
-#!/usr/bin/with-contenv bash
+#!/usr/bin/with-contenv bashio
 # shellcheck shell=bash
 set -e
 
 # Logging
-info() { echo "[init-cups] $*"; }
-error() { echo "[init-cups] ERROR: $*" >&2; }
+log_info() { if command -v bashio >/dev/null 2>&1; then bashio::log.info "$*"; else echo "[init-cups] $*"; fi }
+log_error() { if command -v bashio >/dev/null 2>&1; then bashio::log.error "$*"; else echo "[init-cups] ERROR: $*" >&2; fi }
 
-info "Starting CUPS initialization..."
+log_info "Starting CUPS initialization..."
 
 # Load configuration from Home Assistant
-if [[ -f /usr/bin/bashio ]]; then
+if command -v bashio >/dev/null 2>&1; then
     ADMIN_USER=$(bashio::config 'admin_username')
     ADMIN_PASS=$(bashio::config 'admin_password')
     SSL_ENABLED=$(bashio::config 'ssl_enabled')
@@ -22,7 +22,7 @@ else
     LOG_LEVEL="info"
 fi
 
-info "Configuration loaded: user=$ADMIN_USER, ssl=$SSL_ENABLED"
+log_info "Configuration loaded: user=$ADMIN_USER, ssl=$SSL_ENABLED"
 
 # Create directories
 mkdir -p /var/log/cups /var/run/cups /var/cache/cups /var/spool/cups /etc/cups/ssl /run/cups /data/cups
@@ -30,18 +30,18 @@ chown -R lp:lp /var/log/cups /var/run/cups /var/cache/cups /var/spool/cups /etc/
 
 # Copy default config if /etc/cups is empty
 if [[ ! -f /etc/cups/cupsd.conf ]]; then
-    info "Copying default CUPS configuration..."
+    log_info "Copying default CUPS configuration..."
     cp -r /etc/cups.default/* /etc/cups/
 fi
 
 # Restore persistent config from /data (if it exists)
 if [[ -d /data/cups/etc ]]; then
-    info "Restoring persistent configuration from /data/cups..."
+    log_info "Restoring persistent configuration from /data/cups..."
     cp -rf /data/cups/etc/* /etc/cups/ 2>/dev/null || true
 fi
 
 # Generate cupsd.conf via helper script
-info "Generating cupsd.conf..."
+log_info "Generating cupsd.conf..."
 /usr/local/bin/cups-config.sh \
     "$ADMIN_USER" \
     "$ADMIN_PASS" \
@@ -50,14 +50,14 @@ info "Generating cupsd.conf..."
 
 # Generate SSL certificates
 if [[ "$SSL_ENABLED" == "true" ]] && [[ ! -f /etc/cups/ssl/server.crt ]]; then
-    info "Generating SSL certificates..."
+    log_info "Generating SSL certificates..."
     /usr/local/bin/generate-ssl.sh
 fi
 
 # Validate configuration
-info "Validating CUPS configuration..."
+log_info "Validating CUPS configuration..."
 if ! cupsd -t 2>/tmp/cupsd-test.log; then
-    error "CUPS configuration is invalid:"
+    log_error "CUPS configuration is invalid:"
     cat /tmp/cupsd-test.log
     exit 1
 fi
@@ -66,4 +66,4 @@ fi
 mkdir -p /data/cups/etc
 cp -rf /etc/cups/* /data/cups/etc/ 2>/dev/null || true
 
-info "CUPS initialization completed successfully"
+log_info "CUPS initialization completed successfully"

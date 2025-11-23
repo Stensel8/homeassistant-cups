@@ -23,15 +23,16 @@ ports_description:
   631/tcp: "CUPS Web Interface (HTTPS)"
 
 # Privileges for USB access
-privileged:
-  - SYS_ADMIN
-usb: true
-devices:
-  - /dev/bus/usb
+# USB/device passthrough removed to improve security score — this add-on does not
+# require direct access to host USB devices by default. If you need USB printers
+# added locally, re-enable usb/devices and privileged entries.
+usb: false
+# Devices: remove host USB passthrough by default
+# devices: []
 
 # Access to host dbus (for avahi/mDNS)
 # This is important for AirPrint discovery
-apparmor: false
+apparmor: true
 
 # Configuration options for users
 options:
@@ -44,7 +45,7 @@ schema:
   admin_username: str
   admin_password: password
   ssl_enabled: bool
-  log_level: list(debug|info|warn|error)
+  log_level: list(debug|info|warning|error)
 
 # Panel in Home Assistant UI
 panel_icon: mdi:printer
@@ -53,3 +54,4 @@ webui: "https://[HOST]:[PORT:631]/"
 
 # Image configuration
 image: stensel8/homeassistant-cups
+auth_api: true

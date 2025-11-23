@@ -1,0 +1,44 @@
+# Minimal AppArmor profile for the CUPS add-on
+#
+# This profile is a conservative template to allow CUPS to access
+# the files and devices it typically needs while preventing unnecessary access.
+
+profile add-on-cups flag=(attach_disconnected,mediate_deleted) {
+  # include standard tunables
+  #include <tunables/global>
+
+  # Allow executing the CUPS daemon
+  /usr/sbin/cupsd mr,
+
+  # CUPS config and runtime directories
+  /etc/cups/** r,
+  /var/spool/cups/** rwk,
+  /var/log/cups/** rw,
+  /run/cups/** rw,
+
+  # Library locations
+  /usr/lib/** mr,
+  /usr/local/lib/** mr,
+
+  # Access to device nodes for USB printers
+  # USB passthrough is disabled by default to reduce the add-on's attack surface.
+  # To enable USB passthrough, re-add the following line and enable usb in config.yaml:
+  # /dev/bus/usb/** rw,
+
+  # Allow network access (necessary for printing and Avahi/mDNS)
+  network inet stream,
+  network inet6 stream,
+
+  # Allow read access to CA certs (for TLS)
+  /etc/ssl/** r,
+
+  # Deny obvious sensitive data
+  deny /etc/shadow r,
+  deny /etc/gshadow r,
+
+  # Allow subprocesses and program lifetime management
+  # SYS_ADMIN is intentionally removed to lower privilege requirements.
+  capability net_bind_service,
+  capability setgid,
+  capability setuid,
+}
