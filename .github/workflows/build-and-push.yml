@@ -1,9 +1,14 @@
+
 name: Build and push multi-arch image
 
+
 on:
+  # push:
+  #   tags:
+  #     - 'v*'  # Release tag trigger (commented out for debug)
   push:
-    tags:
-      - 'v*'
+    branches:
+      - '**'
   workflow_dispatch:
 
 permissions:
