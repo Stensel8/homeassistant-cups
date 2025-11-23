@@ -60,7 +60,7 @@ LABEL \
   cups.version="2.4.14" \
   io.hass.type="addon" \
   io.hass.arch="aarch64|amd64|armv7|i386" \
-  maintainer="Sten Tijhuis <https://github.com/Stensel8>"
+  maintainer="Sten Tijhuis <https://github.com/stensel8>"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 

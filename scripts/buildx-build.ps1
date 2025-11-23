@@ -1,5 +1,5 @@
 param(
-  [string]$Image = 'Stensel8/homeassistant-cups',
+  [string]$Image = 'stensel8/homeassistant-cups',
   [string]$Tag = '',
   [string]$Platforms = 'linux/amd64,linux/arm64',
   [switch]$Push
@@ -41,7 +41,7 @@ if ($LASTEXITCODE -eq 0) {
     if (-not $Push) {
         Write-Host ""
         Write-Host "To push this image to Docker Hub:" -ForegroundColor Yellow
-        Write-Host "  1. Log in: docker login -u Stensel8" -ForegroundColor White
+        Write-Host "  1. Log in: docker login -u stensel8" -ForegroundColor White
         Write-Host "  2. Push: docker buildx build --platform $Platforms -t $fullTag --push ./" -ForegroundColor White
         Write-Host ""
         Write-Host "Or re-run this script with -Push flag" -ForegroundColor Yellow

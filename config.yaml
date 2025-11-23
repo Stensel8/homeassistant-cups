@@ -2,7 +2,7 @@ name: CUPS Print Server
 version: 2.0.0
 slug: cups-server
 description: "CUPS print server for Home Assistant"
-url: https://github.com/Stensel8/homeassistant-cups
+url: https://github.com/stensel8/homeassistant-cups
 arch:
   - aarch64
   - amd64
@@ -52,4 +52,4 @@ panel_title: CUPS Print Server
 webui: "https://[HOST]:[PORT:631]/"
 
 # Image configuration
-image: Stensel8/homeassistant-cups
+image: stensel8/homeassistant-cups
