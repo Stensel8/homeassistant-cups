@@ -52,4 +52,4 @@ panel_title: CUPS Print Server
 webui: "https://[HOST]:[PORT:631]/"
 
 # Image configuration
-image: stensel8/homeassistant-cups:2.0.0
+image: stensel8/homeassistant-cups
