@@ -1,3 +1,1 @@
-# This file defines the service type for init-cups in s6-overlay.
-# oneshot: This tells s6 that this is a one-time setup (not a long-running process).
 oneshot

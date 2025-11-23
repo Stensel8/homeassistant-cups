@@ -1,4 +1,1 @@
-# This file defines the service type for CUPS in the s6-overlay init system.
-# "longrun" specifies that CUPS is a long-running service, meaning it starts and remains active continuously,
-# unlike one-shot services that execute once and exit.
 longrun
