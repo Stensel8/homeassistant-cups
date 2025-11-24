@@ -138,5 +138,5 @@ EXPOSE 631
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD /usr/local/bin/healthcheck.sh || exit 1
 
-# S6-overlay start
-ENTRYPOINT ["/init"]
+# S6-overlay is provided by the base image
+# The hassio-addons/debian-base image already configures /init correctly
