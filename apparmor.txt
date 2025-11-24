@@ -1,42 +1,159 @@
 #include <tunables/global>
 
 profile hassio-addon flags=(attach_disconnected,mediate_deleted) {
-  # Allow executing the CUPS daemon
+  # ==========================================
+  # S6-Overlay v3+ support
+  # ==========================================
+  /init rix,
+  /run/s6/** rwix,
+  /run/s6-rc/** rwix,
+  /etc/s6/** rix,
+  /etc/s6-overlay/** rix,
+  /package/** rix,
+  /command/** rix,
+  /var/run/s6/** rwix,
+  
+  # ==========================================
+  # Shell and system binaries
+  # ==========================================
+  /bin/** rix,
+  /sbin/** rix,
+  /usr/bin/** rix,
+  /usr/sbin/** rix,
+  /usr/local/bin/** rix,
+  /usr/local/sbin/** rix,
+  
+  # ==========================================
+  # Bashio support (Home Assistant helper)
+  # ==========================================
+  /usr/lib/bashio/** rix,
+  /tmp/bashio/** rw,
+  
+  # ==========================================
+  # CUPS daemon and binaries
+  # ==========================================
   /usr/sbin/cupsd rix,
-
-  # CUPS config and runtime directories
-  /etc/cups/** r,
+  /usr/sbin/cups-browsed rix,
+  /usr/lib/cups/** rix,
+  /usr/lib/cups/backend/** rix,
+  /usr/lib/cups/driver/** rix,
+  /usr/lib/cups/filter/** rix,
+  /usr/lib/cups/notifier/** rix,
+  
+  # ==========================================
+  # CUPS configuration and runtime
+  # ==========================================
+  /etc/cups/** rw,
   /var/spool/cups/** rwk,
+  /var/cache/cups/** rwk,
   /var/log/cups/** rw,
   /run/cups/** rw,
-
-  # Library locations
-  /usr/lib/** rm,
-  /usr/local/lib/** rm,
-
-  # Access to device nodes for USB printers
-  # USB passthrough is disabled by default to reduce the add-on's attack surface.
-  # To enable USB passthrough, re-add the following line and enable usb in config.yaml:
-  # /dev/bus/usb/** rw,
-
-  # Allow network access (necessary for printing and Avahi/mDNS)
-  network inet stream,
-  network inet6 stream,
-
-  # Allow read access to CA certs (for TLS)
-  /etc/ssl/** r,
-
-  # Deny obvious sensitive data
-  deny /etc/shadow r,
-  deny /etc/gshadow r,
-
-  # Allow subprocesses and program lifetime management
-  capability net_bind_service,
-  capability setgid,
-  capability setuid,
+  /var/run/cups/** rw,
+  /tmp/cups/** rwk,
   
-  # Vaak nodig voor CUPS
+  # ==========================================
+  # Library locations
+  # ==========================================
+  /lib/** rm,
+  /lib64/** rm,
+  /usr/lib/** rm,
+  /usr/lib64/** rm,
+  /usr/local/lib/** rm,
+  
+  # ==========================================
+  # Home Assistant add-on directories
+  # ==========================================
+  /data/** rw,
+  /config/** r,
+  /ssl/** r,
+  /addons/** r,
+  /backup/** r,
+  /share/** rw,
+  /media/** r,
+  
+  # ==========================================
+  # System directories
+  # ==========================================
+  /etc/** r,
+  /proc/** r,
+  /sys/** r,
+  /dev/** rw,
+  /tmp/** rwk,
+  /var/tmp/** rwk,
+  /run/** rw,
+  /var/run/** rw,
+  
+  # ==========================================
+  # USB printer support (uncomment to enable)
+  # ==========================================
+  # /dev/bus/usb/** rw,
+  # /dev/usb/** rw,
+  # /dev/lp* rw,
+  
+  # ==========================================
+  # Network access
+  # ==========================================
+  network inet stream,
+  network inet dgram,
+  network inet6 stream,
+  network inet6 dgram,
+  network netlink raw,
+  network unix stream,
+  network unix dgram,
+  
+  # ==========================================
+  # SSL/TLS certificates
+  # ==========================================
+  /etc/ssl/** r,
+  /etc/pki/** r,
+  /usr/share/ca-certificates/** r,
+  
+  # ==========================================
+  # DNS resolution
+  # ==========================================
+  /etc/hosts r,
+  /etc/resolv.conf r,
+  /etc/nsswitch.conf r,
+  
+  # ==========================================
+  # Capabilities (minimum required for CUPS)
+  # ==========================================
   capability chown,
   capability dac_override,
+  capability dac_read_search,
   capability fowner,
+  capability fsetid,
+  capability kill,
+  capability net_bind_service,
+  capability net_admin,
+  capability setgid,
+  capability setuid,
+  capability sys_chroot,
+  capability sys_resource,
+  
+  # ==========================================
+  # Signals (for process management)
+  # ==========================================
+  signal send set=(term,kill,hup),
+  signal receive set=(term,kill,hup,usr1,usr2),
+  
+  # ==========================================
+  # Ptrace (for debugging, optional)
+  # ==========================================
+  ptrace read,
+  
+  # ==========================================
+  # Explicitly denied access
+  # ==========================================
+  deny /etc/shadow r,
+  deny /etc/gshadow r,
+  deny /root/.ssh/** r,
+  deny /home/**/.ssh/** r,
+  
+  # ==========================================
+  # Mount operations (required for S6)
+  # ==========================================
+  mount,
+  remount,
+  umount,
 }
