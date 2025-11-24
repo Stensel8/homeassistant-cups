@@ -3,7 +3,7 @@
 # This profile is a conservative template to allow CUPS to access
 # the files and devices it typically needs while preventing unnecessary access.
 
-profile add-on-cups flag=(attach_disconnected,mediate_deleted) {
+profile add-on-cups flags=(attach_disconnected,mediate_deleted) {
   # include standard tunables
   #include <tunables/global>
 
