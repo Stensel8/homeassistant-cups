@@ -1,14 +1,8 @@
-# Minimal AppArmor profile for the CUPS add-on
-#
-# This profile is a conservative template to allow CUPS to access
-# the files and devices it typically needs while preventing unnecessary access.
+#include <tunables/global>
 
-profile add-on-cups flags=(attach_disconnected,mediate_deleted) {
-  # include standard tunables
-  #include <tunables/global>
-
+profile hassio-addon flags=(attach_disconnected,mediate_deleted) {
   # Allow executing the CUPS daemon
-  /usr/sbin/cupsd mr,
+  /usr/sbin/cupsd rix,
 
   # CUPS config and runtime directories
   /etc/cups/** r,
@@ -17,8 +11,8 @@ profile add-on-cups flags=(attach_disconnected,mediate_deleted) {
   /run/cups/** rw,
 
   # Library locations
-  /usr/lib/** mr,
-  /usr/local/lib/** mr,
+  /usr/lib/** rm,
+  /usr/local/lib/** rm,
 
   # Access to device nodes for USB printers
   # USB passthrough is disabled by default to reduce the add-on's attack surface.
@@ -37,8 +31,12 @@ profile add-on-cups flags=(attach_disconnected,mediate_deleted) {
   deny /etc/gshadow r,
 
   # Allow subprocesses and program lifetime management
-  # SYS_ADMIN is intentionally removed to lower privilege requirements.
   capability net_bind_service,
   capability setgid,
   capability setuid,
+  
+  # Vaak nodig voor CUPS
+  capability chown,
+  capability dac_override,
+  capability fowner,
 }
